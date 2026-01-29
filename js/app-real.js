@@ -1982,7 +1982,7 @@ function showProfileDetails(profile) {
         actionsDiv = document.createElement('div');
         actionsDiv.id = 'profileModalActions';
         actionsDiv.className = 'profile-modal-actions';
-        document.getElementById('profileModal').querySelector('.modal-content').appendChild(actionsDiv);
+        document.getElementById('profileModal').querySelector('.profile-modal-content').appendChild(actionsDiv);
     }
     
     actionsDiv.innerHTML = `
@@ -5694,3 +5694,15 @@ async function openMyProfile() {
 
 console.log('🔥 FlameMatch App REAL Mode loaded');
 console.log('📸 Social Post System loaded');
+
+// Export global functions for HTML onclick handlers
+window.openMyProfile = openMyProfile;
+window.openUserProfile = openUserProfile;
+window.createPost = createPost;
+window.deletePost = deletePost;
+window.addComment = addComment;
+window.deleteComment = deleteComment;
+window.toggleLike = toggleLike;
+window.closeUserProfileModal = closeUserProfileModal;
+window.showProfileDetails = showProfileDetails;
+window.closeProfileModal = closeProfileModal;
