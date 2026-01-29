@@ -100,7 +100,12 @@ let userPremiumData = {
 // INITIALIZATION
 // ==========================================
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('🔥 FlameMatch App - Modalità REALE');
+    console.log('🔥 FlameMatch App - Modalità REALE (v=44)');
+    
+    // Inizializza EmailJS per email di benvenuto
+    if (window.FlameEmail) {
+        window.FlameEmail.init();
+    }
     
     // Aspetta che Firebase sia pronto
     await waitForFirebase();
@@ -135,9 +140,10 @@ function checkAuth() {
             
             if (!currentUserProfile) {
                 // Utente nuovo, crea profilo base
+                const newUserName = user.displayName || 'Nuovo Utente';
                 await FlameUsers.createProfile(user.uid, {
                     email: user.email,
-                    name: user.displayName || 'Nuovo Utente',
+                    name: newUserName,
                     photos: user.photoURL ? [user.photoURL] : [],
                     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                     isVerified: false,
@@ -157,6 +163,12 @@ function checkAuth() {
                     }
                 });
                 currentUserProfile = await FlameUsers.getProfile(user.uid);
+                
+                // 📧 Invia email di benvenuto al nuovo utente
+                if (window.FlameEmail && user.email) {
+                    console.log('📧 Invio email di benvenuto a:', user.email);
+                    window.FlameEmail.sendWelcome(user.email, newUserName);
+                }
             }
             
             // Aggiorna UI con dati utente
