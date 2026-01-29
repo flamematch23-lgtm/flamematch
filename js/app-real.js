@@ -6770,6 +6770,11 @@ async function saveLocationToProfile(locationName, lat, lng) {
     }
 }
 
+// Export location functions to window
+window.setMyLocation = setMyLocation;
+window.showManualLocationInput = showManualLocationInput;
+window.saveManualLocation = saveManualLocation;
+
 // ================================================================
 // 🔔 PUSH NOTIFICATIONS SYSTEM
 // ================================================================
@@ -6792,7 +6797,7 @@ const NotificationManager = {
         
         try {
             // Register service worker
-            const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+            const registration = await navigator.serviceWorker.register('./firebase-messaging-sw.js');
             console.log('Service Worker registrato:', registration);
             
             // Check if Firebase Messaging is available
@@ -7484,7 +7489,7 @@ const WelcomeExperience = {
                         💡 <strong>Consiglio:</strong> I profili completi ricevono 10x più match!
                     </div>
                     
-                    <button class="welcome-start-btn" onclick="WelcomeExperience.close()">
+                    <button class="welcome-start-btn" onclick="WelcomeExperience.close(); return false;" style="cursor: pointer; z-index: 10000;">
                         Inizia a Esplorare 🚀
                     </button>
                 </div>
