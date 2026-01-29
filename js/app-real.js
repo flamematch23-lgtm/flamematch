@@ -5701,8 +5701,12 @@ window.openUserProfile = openUserProfile;
 
 // Wrapper per il pulsante "Vedi Post" - risolve problema di timing
 window.viewUserPosts = function(userId) {
-    closeProfileModal();
-    setTimeout(() => openUserProfile(userId), 150);
+    // Forza la chiusura del modal profilo
+    const modal = document.getElementById('profileModal');
+    if (modal) modal.classList.remove('active');
+    
+    // Apri il profilo utente dopo un breve delay
+    setTimeout(() => openUserProfile(userId), 200);
 };
 
 window.openCreatePostModal = openCreatePostModal;
