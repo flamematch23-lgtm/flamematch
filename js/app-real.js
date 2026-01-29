@@ -15,12 +15,26 @@ let currentUser = null;
 let currentUserProfile = null;
 let profiles = []; // Profili REALI da Firebase
 let currentIndex = 0;
+let profilesToShow = []; // Profili da Explore
+let currentProfileIndex = 0; // Index per Explore
 let swipeHistory = [];
 let currentMatchName = '';
 let currentMatchId = '';
 let currentChatMatchId = '';
 let currentChatUserId = ''; // ID utente con cui stai chattando
 let chatUnsubscribe = null;
+
+// Mostra profilo corrente da Explore
+function showCurrentProfile() {
+    if (profilesToShow.length === 0) {
+        showNoProfiles();
+        return;
+    }
+    // Copia i profili Explore nella variabile globale profiles
+    profiles = profilesToShow;
+    currentIndex = currentProfileIndex;
+    renderCards();
+}
 
 // ==========================================
 // SISTEMA PREMIUM - Configurazione Piani
