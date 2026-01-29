@@ -1693,9 +1693,32 @@ function renderCards() {
         // Tags/interessi
         const tags = profile.interests || profile.tags || [];
         
+        // Voice Vibe HTML
+        const voiceVibeHtml = profile.voiceVibe?.url ? `
+            <div class="voice-vibe-badge">
+                <i class="fas fa-microphone"></i> Voice Vibe
+            </div>
+            <div class="voice-player">
+                <button class="voice-play-btn" onclick="event.stopPropagation(); playVoiceOnCard('${profile.voiceVibe.url}', this)">
+                    <i class="fas fa-play"></i>
+                </button>
+                <div class="voice-waveform">
+                    <div class="wave-bar"></div>
+                    <div class="wave-bar"></div>
+                    <div class="wave-bar"></div>
+                    <div class="wave-bar"></div>
+                    <div class="wave-bar"></div>
+                    <div class="wave-bar"></div>
+                    <div class="wave-bar"></div>
+                </div>
+                <span class="voice-duration">${profile.voiceVibe.duration || 15}s</span>
+            </div>
+        ` : '';
+        
         card.innerHTML = `
             <img src="${photoUrl}" alt="${profile.name}" draggable="false" onerror="this.src=DEFAULT_AVATAR_40">
             <div class="card-gradient"></div>
+            ${voiceVibeHtml}
             <div class="card-info">
                 <h2 class="card-name">
                     ${profile.name || 'Utente'}${age ? ', ' + age : ''}
@@ -3449,6 +3472,40 @@ function editProfile() {
                 <label>Interessi</label>
                 <div class="interests-grid" id="interestsGrid">
                     ${renderInterestsSelector(profile.interests || [])}
+                </div>
+            </div>
+            
+            <div class="edit-section">
+                <label>🎤 Voice Vibe - Presentati con la voce!</label>
+                <p style="color: #888; font-size: 0.85rem; margin-bottom: 15px;">
+                    Registra un audio di 15 secondi per presentarti. La tua voce apparirà sul tuo profilo!
+                </p>
+                <div class="voice-recorder">
+                    <div class="voice-recorder-icon" onclick="toggleVoiceRecording()">
+                        <i class="fas fa-microphone"></i>
+                    </div>
+                    <p class="voice-recorder-text">Tocca per registrare (max 15s)</p>
+                    <div class="voice-recorder-timer">0s / 15s</div>
+                </div>
+                <div class="voice-preview ${profile.voiceVibe?.url ? 'has-audio' : ''}">
+                    ${profile.voiceVibe?.url ? `
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <button class="voice-play-btn" onclick="playVoicePreview('${profile.voiceVibe.url}')">
+                                <i class="fas fa-play"></i>
+                            </button>
+                            <div class="voice-waveform">
+                                <div class="wave-bar"></div>
+                                <div class="wave-bar"></div>
+                                <div class="wave-bar"></div>
+                                <div class="wave-bar"></div>
+                                <div class="wave-bar"></div>
+                            </div>
+                            <span style="color: #888; font-size: 0.9rem;">Il tuo Voice Vibe</span>
+                        </div>
+                        <button onclick="deleteVoiceVibe()" style="margin-top: 10px; background: none; border: none; color: #f44336; cursor: pointer;">
+                            <i class="fas fa-trash"></i> Elimina
+                        </button>
+                    ` : ''}
                 </div>
             </div>
             
@@ -5997,3 +6054,488 @@ window.requestGeolocation = requestGeolocation;
 window.exploreNew = exploreNew;
 window.explorePopular = explorePopular;
 window.exploreOnline = exploreOnline;
+
+
+// =====================================================
+// VOICE VIBE - Audio Presentation System
+// =====================================================
+
+let voiceRecorder = null;
+let voiceAudioChunks = [];
+let voiceRecordingTimer = null;
+let voiceRecordingSeconds = 0;
+let currentVoiceAudio = null;
+
+// Initialize Voice Recording
+async function initVoiceRecorder() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        voiceRecorder = new MediaRecorder(stream);
+        
+        voiceRecorder.ondataavailable = (event) => {
+            voiceAudioChunks.push(event.data);
+        };
+        
+        voiceRecorder.onstop = () => {
+            const audioBlob = new Blob(voiceAudioChunks, { type: 'audio/webm' });
+            handleVoiceRecordingComplete(audioBlob);
+        };
+        
+        return true;
+    } catch (error) {
+        console.error('Errore accesso microfono:', error);
+        showToast('❌ Permesso microfono negato');
+        return false;
+    }
+}
+
+// Start Voice Recording
+async function startVoiceRecording() {
+    if (!voiceRecorder) {
+        const initialized = await initVoiceRecorder();
+        if (!initialized) return;
+    }
+    
+    voiceAudioChunks = [];
+    voiceRecordingSeconds = 0;
+    voiceRecorder.start();
+    
+    const recorderIcon = document.querySelector('.voice-recorder-icon');
+    const recorderDiv = document.querySelector('.voice-recorder');
+    
+    if (recorderIcon) recorderIcon.classList.add('recording');
+    if (recorderDiv) recorderDiv.classList.add('recording');
+    
+    // Update timer
+    voiceRecordingTimer = setInterval(() => {
+        voiceRecordingSeconds++;
+        const timerEl = document.querySelector('.voice-recorder-timer');
+        if (timerEl) {
+            timerEl.textContent = `${voiceRecordingSeconds}s / 15s`;
+        }
+        
+        // Max 15 seconds
+        if (voiceRecordingSeconds >= 15) {
+            stopVoiceRecording();
+        }
+    }, 1000);
+    
+    showToast('🎤 Registrazione in corso...');
+}
+
+// Stop Voice Recording
+function stopVoiceRecording() {
+    if (voiceRecorder && voiceRecorder.state === 'recording') {
+        voiceRecorder.stop();
+        clearInterval(voiceRecordingTimer);
+        
+        const recorderIcon = document.querySelector('.voice-recorder-icon');
+        const recorderDiv = document.querySelector('.voice-recorder');
+        
+        if (recorderIcon) recorderIcon.classList.remove('recording');
+        if (recorderDiv) recorderDiv.classList.remove('recording');
+    }
+}
+
+// Toggle Voice Recording
+function toggleVoiceRecording() {
+    if (voiceRecorder && voiceRecorder.state === 'recording') {
+        stopVoiceRecording();
+    } else {
+        startVoiceRecording();
+    }
+}
+
+// Handle Recording Complete - Upload to Cloudinary
+async function handleVoiceRecordingComplete(audioBlob) {
+    showToast('⏳ Caricamento audio...');
+    
+    try {
+        const formData = new FormData();
+        formData.append('file', audioBlob, 'voice-vibe.webm');
+        formData.append('upload_preset', 'flamematch');
+        formData.append('resource_type', 'video'); // Cloudinary uses 'video' for audio
+        
+        const response = await fetch(
+            'https://api.cloudinary.com/v1_1/dnxqpp2en/video/upload',
+            { method: 'POST', body: formData }
+        );
+        
+        const data = await response.json();
+        
+        if (data.secure_url) {
+            // Save to Firebase
+            await saveVoiceVibeToProfile(data.secure_url, voiceRecordingSeconds);
+            showToast('✅ Voice Vibe salvato!');
+            updateVoicePreview(data.secure_url);
+        } else {
+            throw new Error('Upload failed');
+        }
+    } catch (error) {
+        console.error('Errore upload audio:', error);
+        showToast('❌ Errore caricamento audio');
+    }
+}
+
+// Save Voice Vibe URL to Firebase
+async function saveVoiceVibeToProfile(audioUrl, duration) {
+    const user = auth.currentUser;
+    if (!user) return;
+    
+    await db.collection('users').doc(user.uid).update({
+        voiceVibe: {
+            url: audioUrl,
+            duration: duration,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }
+    });
+}
+
+// Update Voice Preview UI
+function updateVoicePreview(audioUrl) {
+    const preview = document.querySelector('.voice-preview');
+    if (preview) {
+        preview.classList.add('has-audio');
+        preview.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <button class="voice-play-btn" onclick="playVoicePreview('${audioUrl}')">
+                    <i class="fas fa-play"></i>
+                </button>
+                <div class="voice-waveform">
+                    <div class="wave-bar"></div>
+                    <div class="wave-bar"></div>
+                    <div class="wave-bar"></div>
+                    <div class="wave-bar"></div>
+                    <div class="wave-bar"></div>
+                </div>
+                <span style="color: #888; font-size: 0.9rem;">Il tuo Voice Vibe</span>
+            </div>
+            <button onclick="deleteVoiceVibe()" style="margin-top: 10px; background: none; border: none; color: #f44336; cursor: pointer;">
+                <i class="fas fa-trash"></i> Elimina
+            </button>
+        `;
+    }
+}
+
+// Play Voice on Card
+function playVoiceOnCard(audioUrl, button) {
+    if (currentVoiceAudio) {
+        currentVoiceAudio.pause();
+        currentVoiceAudio = null;
+        document.querySelectorAll('.voice-play-btn').forEach(btn => {
+            btn.classList.remove('playing');
+            btn.innerHTML = '<i class="fas fa-play"></i>';
+        });
+        document.querySelectorAll('.voice-player').forEach(p => p.classList.remove('playing'));
+    }
+    
+    currentVoiceAudio = new Audio(audioUrl);
+    button.classList.add('playing');
+    button.innerHTML = '<i class="fas fa-pause"></i>';
+    button.closest('.voice-player').classList.add('playing');
+    
+    currentVoiceAudio.play();
+    
+    currentVoiceAudio.onended = () => {
+        button.classList.remove('playing');
+        button.innerHTML = '<i class="fas fa-play"></i>';
+        button.closest('.voice-player').classList.remove('playing');
+        currentVoiceAudio = null;
+    };
+}
+
+// Play Voice Preview
+function playVoicePreview(audioUrl) {
+    if (currentVoiceAudio) {
+        currentVoiceAudio.pause();
+        currentVoiceAudio = null;
+    }
+    currentVoiceAudio = new Audio(audioUrl);
+    currentVoiceAudio.play();
+}
+
+// Delete Voice Vibe
+async function deleteVoiceVibe() {
+    const user = auth.currentUser;
+    if (!user) return;
+    
+    if (confirm('Eliminare il tuo Voice Vibe?')) {
+        await db.collection('users').doc(user.uid).update({
+            voiceVibe: firebase.firestore.FieldValue.delete()
+        });
+        
+        const preview = document.querySelector('.voice-preview');
+        if (preview) {
+            preview.classList.remove('has-audio');
+            preview.innerHTML = '';
+        }
+        
+        showToast('🗑️ Voice Vibe eliminato');
+    }
+}
+
+// =====================================================
+// ICEBREAKER GAMES System
+// =====================================================
+
+let currentGame = null;
+let currentGameQuestions = [];
+let currentQuestionIndex = 0;
+let playerAnswers = [];
+let currentIcebreakerMatchId = null;
+
+// Game Questions Database
+const ICEBREAKER_GAMES = {
+    preferiresti: {
+        name: 'Preferiresti...',
+        questions: [
+            { q: 'Preferiresti viaggiare nel passato o nel futuro?', options: ['🕰️ Passato', '🚀 Futuro'] },
+            { q: 'Preferiresti avere il potere di volare o essere invisibile?', options: ['🦅 Volare', '👻 Invisibilità'] },
+            { q: 'Preferiresti vivere in montagna o al mare?', options: ['🏔️ Montagna', '🏖️ Mare'] },
+            { q: 'Preferiresti leggere nella mente o teletrasportarti?', options: ['🧠 Leggere menti', '✨ Teletrasporto'] },
+            { q: 'Preferiresti pizza infinita o gelato infinito?', options: ['🍕 Pizza', '🍦 Gelato'] },
+            { q: 'Preferiresti non dormire mai o non mangiare mai?', options: ['😴 Mai dormire', '🍽️ Mai mangiare'] },
+            { q: 'Preferiresti parlare tutte le lingue o suonare tutti gli strumenti?', options: ['🗣️ Lingue', '🎸 Strumenti'] },
+        ]
+    },
+    compatibilita: {
+        name: 'Quiz Compatibilità',
+        questions: [
+            { q: 'Qual è il tuo weekend ideale?', options: ['🎉 Festa con amici', '🏠 Relax a casa', '🌲 Avventura outdoor', '🎬 Cinema/Serie TV'] },
+            { q: 'Come gestisci i conflitti?', options: ['💬 Ne parlo subito', '⏰ Mi prendo tempo', '🤗 Cerco compromesso', '😶 Evito lo scontro'] },
+            { q: 'Cosa apprezzi di più in una relazione?', options: ['😂 Umorismo', '🤝 Lealtà', '💕 Romanticismo', '🎯 Obiettivi comuni'] },
+            { q: 'Come ti descrivi meglio?', options: ['🦁 Estroverso', '🐱 Introverso', '🦊 Un po\' di entrambi', '🎭 Dipende dal mood'] },
+            { q: 'Il primo appuntamento ideale?', options: ['🍽️ Cena romantica', '☕ Caffè e chiacchiere', '🎢 Avventura', '🎨 Mostra/Museo'] },
+        ]
+    },
+    indovina: {
+        name: 'Indovina il Match',
+        questions: [
+            { q: 'Qual è il mio colore preferito?', options: ['🔴 Rosso', '🔵 Blu', '💚 Verde', '💜 Viola'] },
+            { q: 'Quanti fratelli/sorelle ho?', options: ['0️⃣ Nessuno', '1️⃣ Uno', '2️⃣ Due', '3️⃣+ Tre o più'] },
+            { q: 'Sono una persona mattiniera o nottambula?', options: ['🌅 Mattina', '🌙 Notte'] },
+            { q: 'Il mio genere musicale preferito?', options: ['🎸 Rock/Pop', '🎹 Elettronica', '🎺 Jazz/Soul', '🎤 Hip-Hop/R&B'] },
+            { q: 'Preferisco cane o gatto?', options: ['🐕 Cane', '🐈 Gatto', '🐰 Altro', '❌ Nessuno'] },
+        ]
+    },
+    emoji: {
+        name: 'Emoji Story',
+        questions: [
+            { q: 'Descrivi il tuo lunedì tipico con 3 emoji', type: 'emoji', emojis: ['😴', '☕', '💼', '😫', '🏃', '📱', '🍕', '🎮', '📺', '😊'] },
+            { q: 'Descrivi la tua vacanza ideale con 3 emoji', type: 'emoji', emojis: ['🏖️', '🏔️', '🌴', '✈️', '🍹', '📸', '🎒', '🛥️', '🎡', '🌅'] },
+            { q: 'Descrivi il tuo mood oggi con 3 emoji', type: 'emoji', emojis: ['😊', '😴', '🔥', '💪', '🤔', '😂', '❤️', '✨', '🎉', '😌'] },
+        ]
+    }
+};
+
+// Open Icebreaker Games Modal
+function openIcebreakerGames(matchId = null) {
+    currentIcebreakerMatchId = matchId || currentMatchId;
+    const modal = document.getElementById('icebreakerModal');
+    if (modal) {
+        modal.classList.add('active');
+        showGamesSelection();
+    }
+}
+
+// Close Modal
+function closeIcebreakerModal(event) {
+    if (event && event.target !== event.currentTarget) return;
+    const modal = document.getElementById('icebreakerModal');
+    if (modal) {
+        modal.classList.remove('active');
+    }
+    resetGame();
+}
+
+// Show Games Selection
+function showGamesSelection() {
+    document.getElementById('icebreakerGamesSelection').style.display = 'block';
+    document.getElementById('icebreakerGamePlay').style.display = 'none';
+    document.getElementById('icebreakerResults').style.display = 'none';
+    resetGame();
+}
+
+// Reset Game State
+function resetGame() {
+    currentGame = null;
+    currentGameQuestions = [];
+    currentQuestionIndex = 0;
+    playerAnswers = [];
+}
+
+// Start a Game
+function startGame(gameType) {
+    currentGame = gameType;
+    const game = ICEBREAKER_GAMES[gameType];
+    
+    // Shuffle and pick 5 questions
+    currentGameQuestions = shuffleArray([...game.questions]).slice(0, 5);
+    currentQuestionIndex = 0;
+    playerAnswers = [];
+    
+    document.getElementById('icebreakerGamesSelection').style.display = 'none';
+    document.getElementById('icebreakerGamePlay').style.display = 'block';
+    document.getElementById('icebreakerResults').style.display = 'none';
+    
+    document.getElementById('gameTotalQuestions').textContent = currentGameQuestions.length;
+    
+    renderQuestion();
+    renderProgress();
+}
+
+// Shuffle Array
+function shuffleArray(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+}
+
+// Render Current Question
+function renderQuestion() {
+    const question = currentGameQuestions[currentQuestionIndex];
+    document.getElementById('gameQuestionNum').textContent = currentQuestionIndex + 1;
+    document.getElementById('gameQuestionText').textContent = question.q;
+    
+    const optionsContainer = document.getElementById('gameOptions');
+    
+    if (question.type === 'emoji') {
+        // Emoji picker mode
+        optionsContainer.innerHTML = `
+            <div class="emoji-story-display" id="selectedEmojis"></div>
+            <div class="emoji-picker">
+                ${question.emojis.map(emoji => `
+                    <span class="emoji-option" onclick="selectEmoji('${emoji}')">${emoji}</span>
+                `).join('')}
+            </div>
+            <button class="match-btn primary" style="margin-top: 15px;" onclick="submitEmojiAnswer()">Conferma</button>
+        `;
+    } else {
+        // Multiple choice mode
+        optionsContainer.innerHTML = question.options.map((opt, i) => `
+            <div class="game-option" onclick="selectOption(this, ${i})">${opt}</div>
+        `).join('');
+    }
+}
+
+// Render Progress Dots
+function renderProgress() {
+    const progressContainer = document.getElementById('gameProgress');
+    progressContainer.innerHTML = currentGameQuestions.map((_, i) => `
+        <div class="progress-dot ${i < currentQuestionIndex ? 'completed' : ''} ${i === currentQuestionIndex ? 'current' : ''}"></div>
+    `).join('');
+}
+
+// Select Option
+function selectOption(element, index) {
+    document.querySelectorAll('.game-option').forEach(opt => opt.classList.remove('selected'));
+    element.classList.add('selected');
+    
+    // Auto-advance after short delay
+    setTimeout(() => {
+        playerAnswers.push(index);
+        nextQuestion();
+    }, 500);
+}
+
+// Emoji Selection
+let selectedEmojis = [];
+
+function selectEmoji(emoji) {
+    if (selectedEmojis.length < 3) {
+        selectedEmojis.push(emoji);
+        document.getElementById('selectedEmojis').textContent = selectedEmojis.join(' ');
+    }
+}
+
+function submitEmojiAnswer() {
+    if (selectedEmojis.length === 3) {
+        playerAnswers.push(selectedEmojis.join(''));
+        selectedEmojis = [];
+        nextQuestion();
+    } else {
+        showToast('Seleziona 3 emoji!');
+    }
+}
+
+// Next Question
+function nextQuestion() {
+    currentQuestionIndex++;
+    
+    if (currentQuestionIndex >= currentGameQuestions.length) {
+        showResults();
+    } else {
+        renderQuestion();
+        renderProgress();
+    }
+}
+
+// Show Results
+function showResults() {
+    document.getElementById('icebreakerGamePlay').style.display = 'none';
+    document.getElementById('icebreakerResults').style.display = 'block';
+    
+    // Calculate compatibility (simulated for now, real would compare with match's answers)
+    const compatibility = Math.floor(Math.random() * 30) + 70; // 70-100%
+    
+    document.getElementById('compatibilityScore').textContent = compatibility + '%';
+    document.querySelector('.compatibility-circle').style.setProperty('--percentage', compatibility + '%');
+    
+    let message = '';
+    if (compatibility >= 90) {
+        message = 'Incredibile! Siete fatti l\'uno per l\'altro! 💕';
+    } else if (compatibility >= 80) {
+        message = 'Ottima compatibilità! Avete molto in comune 🔥';
+    } else if (compatibility >= 70) {
+        message = 'Buona base per conoscervi meglio! ✨';
+    } else {
+        message = 'Gli opposti si attraggono! 😉';
+    }
+    
+    document.getElementById('compatibilityMessage').textContent = message;
+    
+    // Save game results to Firebase
+    saveGameResults(compatibility);
+}
+
+// Save Game Results
+async function saveGameResults(compatibility) {
+    const user = auth.currentUser;
+    if (!user || !currentIcebreakerMatchId) return;
+    
+    try {
+        await db.collection('icebreaker_games').add({
+            matchId: currentIcebreakerMatchId,
+            playerId: user.uid,
+            gameType: currentGame,
+            answers: playerAnswers,
+            compatibility: compatibility,
+            playedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+    } catch (error) {
+        console.error('Errore salvataggio gioco:', error);
+    }
+}
+
+// Open Chat with Current Match
+function openChatWithCurrentMatch() {
+    if (currentIcebreakerMatchId) {
+        openChat(currentIcebreakerMatchId, null);
+    }
+}
+
+// Export functions
+window.toggleVoiceRecording = toggleVoiceRecording;
+window.playVoiceOnCard = playVoiceOnCard;
+window.playVoicePreview = playVoicePreview;
+window.deleteVoiceVibe = deleteVoiceVibe;
+window.openIcebreakerGames = openIcebreakerGames;
+window.closeIcebreakerModal = closeIcebreakerModal;
+window.showGamesSelection = showGamesSelection;
+window.startGame = startGame;
+window.selectOption = selectOption;
+window.selectEmoji = selectEmoji;
+window.submitEmojiAnswer = submitEmojiAnswer;
+window.openChatWithCurrentMatch = openChatWithCurrentMatch;
