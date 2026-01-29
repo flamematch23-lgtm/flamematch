@@ -988,13 +988,30 @@ async function saveSubscriptionToFirebase(planName, subscriptionId) {
         lastBoostReset: firebase.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
     
-    // Aggiorna stato locale
-    premiumState.isPremium = true;
-    premiumState.plan = planName;
-    premiumState.expiresAt = expiresAt;
+    // Aggiorna stato locale direttamente
+    userPremiumData.plan = planName;
+    userPremiumData.expiresAt = expiresAt;
+    userPremiumData.dailySwipesUsed = 0;
+    userPremiumData.dailySuperLikesUsed = 0;
+    userPremiumData.monthlyBoostsUsed = 0;
     
-    // Ricarica limiti
+    // Ricarica limiti da Firebase
     await loadPremiumData();
+    
+    // Mostra badge premium nella sidebar
+    updatePremiumBadge();
+    
+    // Mostra celebrazione
+    showPremiumCelebration(planName);
+    
+    // Aggiorna contatori UI
+    updateSwipeCounter();
+    updateSuperLikeCounter();
+    
+    // Toast di conferma
+    showToast(`🎉 Benvenuto in FlameMatch ${planName.charAt(0).toUpperCase() + planName.slice(1)}!`, 'success');
+    
+    console.log('✅ Upgrade a', planName, 'completato!');
 }
 
 function closePaymentModal() {
