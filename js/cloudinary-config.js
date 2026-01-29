@@ -5,7 +5,7 @@
 
 const CLOUDINARY_CONFIG = {
     cloudName: 'dnxqpp2en',
-    uploadPreset: 'ml_default',
+    uploadPreset: 'flamematch',
     apiKey: '222111274299872'
 };
 
