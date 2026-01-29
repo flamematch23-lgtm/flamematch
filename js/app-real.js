@@ -4950,8 +4950,27 @@ function closeBoostModal() {
 }
 
 async function logout() {
-    await FlameAuth.signOut();
-    window.location.href = 'index.html';
+    if (confirm('Sei sicuro di voler uscire?')) {
+        try {
+            showToast('Disconnessione in corso...', 'info');
+            
+            // Pulisci cache locale
+            localStorage.removeItem('flamematch_user');
+            localStorage.removeItem('flamematch_profile');
+            sessionStorage.clear();
+            
+            // Logout da Firebase
+            await FlameAuth.signOut();
+            
+            console.log('👋 Logout completato');
+            
+            // Redirect alla homepage
+            window.location.href = 'index.html';
+        } catch (error) {
+            console.error('Errore logout:', error);
+            showToast('Errore durante il logout', 'error');
+        }
+    }
 }
 
 // Toast

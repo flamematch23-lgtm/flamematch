@@ -95,6 +95,16 @@ let currentTestimonial = 0;
 // Initialization
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
+    // Controlla se utente è già loggato - redirect automatico
+    auth.onAuthStateChanged((user) => {
+        if (user) {
+            // Utente già loggato, redirect a app
+            console.log('👤 Utente già loggato, redirect a app.html');
+            window.location.href = 'app.html';
+            return;
+        }
+    });
+    
     initHeroCards();
     initDemoCards();
     initScrollAnimations();

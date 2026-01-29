@@ -20,6 +20,15 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
+// Imposta persistenza LOCAL per mantenere il login
+auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+    .then(() => {
+        console.log('🔐 Persistenza sessione attivata (LOCAL)');
+    })
+    .catch((error) => {
+        console.error('Errore persistenza:', error);
+    });
+
 // Enable persistence for offline support
 db.enablePersistence().catch((err) => {
     if (err.code === 'failed-precondition') {

@@ -159,6 +159,21 @@
             transform: scale(1.05);
         }
 
+        .sidebar-logout {
+            padding: 15px 0;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            margin-top: 10px;
+        }
+
+        .logout-btn {
+            color: #999 !important;
+        }
+
+        .logout-btn:hover {
+            color: #ff4757 !important;
+            background: rgba(255,71,87,0.1) !important;
+        }
+
         /* Main Content */
         .main-content {
             flex: 1;
@@ -2800,6 +2815,11 @@
                 <i class="fas fa-user"></i>
             </div>
         </div>
+        <div class="sidebar-logout">
+            <a href="#" class="nav-item logout-btn" title="Esci" onclick="logout(); return false;">
+                <i class="fas fa-sign-out-alt"></i>
+            </a>
+        </div>
     </aside>
 
     <!-- Main Content -->
@@ -2972,11 +2992,11 @@
     <script src="https://upload-widget.cloudinary.com/global/all.js" type="text/javascript"></script>
     
     <!-- FlameMatch Backend -->
-    <script src="js/firebase-config.js"></script>
+    <script src="js/firebase-config.js?v=37"></script>
     <script src="js/cloudinary-config.js"></script>
     <script src="js/backend.js"></script>
     <!-- App Logic (100% REAL - No Demo Data) -->
-    <script src="js/app-real.js?v=36"></script>
+    <script src="js/app-real.js?v=37"></script>
     
     <!-- PWA Service Worker Registration -->
     <script>
