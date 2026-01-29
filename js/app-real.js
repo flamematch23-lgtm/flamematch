@@ -6769,3 +6769,970 @@ async function saveLocationToProfile(locationName, lat, lng) {
         showToast('Errore nel salvataggio', 'error');
     }
 }
+
+// ================================================================
+// 🔔 PUSH NOTIFICATIONS SYSTEM
+// ================================================================
+
+const NotificationManager = {
+    messaging: null,
+    token: null,
+    
+    // Initialize push notifications
+    async init() {
+        if (!('Notification' in window)) {
+            console.log('Browser non supporta notifiche');
+            return;
+        }
+        
+        if (!('serviceWorker' in navigator)) {
+            console.log('Service Worker non supportato');
+            return;
+        }
+        
+        try {
+            // Register service worker
+            const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+            console.log('Service Worker registrato:', registration);
+            
+            // Check if Firebase Messaging is available
+            if (typeof firebase !== 'undefined' && firebase.messaging) {
+                this.messaging = firebase.messaging();
+                
+                // Request permission if not already granted
+                if (Notification.permission === 'default') {
+                    await this.requestPermission();
+                } else if (Notification.permission === 'granted') {
+                    await this.getToken();
+                }
+            }
+        } catch (error) {
+            console.error('Errore inizializzazione notifiche:', error);
+        }
+    },
+    
+    // Request notification permission
+    async requestPermission() {
+        try {
+            const permission = await Notification.requestPermission();
+            console.log('Permesso notifiche:', permission);
+            
+            if (permission === 'granted') {
+                await this.getToken();
+                showToast('🔔 Notifiche attivate! Riceverai avvisi per match e messaggi', 'success');
+            }
+        } catch (error) {
+            console.error('Errore richiesta permesso:', error);
+        }
+    },
+    
+    // Get FCM token
+    async getToken() {
+        if (!this.messaging) return;
+        
+        try {
+            // Note: In production, you'd use a VAPID key here
+            this.token = await this.messaging.getToken();
+            console.log('FCM Token:', this.token);
+            
+            // Save token to user profile
+            if (currentUser && this.token) {
+                await db.collection('users').doc(currentUser.uid).update({
+                    fcmToken: this.token,
+                    notificationsEnabled: true
+                });
+            }
+        } catch (error) {
+            console.error('Errore ottenimento token:', error);
+        }
+    },
+    
+    // Show local notification (for in-app events)
+    showLocal(title, body, options = {}) {
+        if (Notification.permission !== 'granted') return;
+        
+        const notification = new Notification(title, {
+            body: body,
+            icon: '/logo.png',
+            badge: '/logo.png',
+            vibrate: [200, 100, 200],
+            ...options
+        });
+        
+        notification.onclick = () => {
+            window.focus();
+            notification.close();
+            if (options.onClick) options.onClick();
+        };
+        
+        return notification;
+    },
+    
+    // Send notification for match
+    notifyMatch(matchedUser) {
+        this.showLocal(
+            '🔥 È un Match!',
+            `Tu e ${matchedUser.name} vi piacete! Inizia a chattare`,
+            {
+                tag: 'match-' + matchedUser.id,
+                requireInteraction: true,
+                onClick: () => {
+                    // Open chat with this match
+                }
+            }
+        );
+    },
+    
+    // Send notification for message
+    notifyMessage(senderName, messagePreview) {
+        this.showLocal(
+            `💬 ${senderName}`,
+            messagePreview.substring(0, 50) + (messagePreview.length > 50 ? '...' : ''),
+            {
+                tag: 'message-' + Date.now()
+            }
+        );
+    },
+    
+    // Send notification for like (premium)
+    notifyLike() {
+        this.showLocal(
+            '❤️ Qualcuno ti ha messo Like!',
+            'Passa a Premium per scoprire chi è',
+            {
+                tag: 'like-' + Date.now()
+            }
+        );
+    }
+};
+
+// ================================================================
+// 🧠 AI WINGMAN - Assistente Chat Intelligente
+// ================================================================
+
+const AIWingman = {
+    // Conversation starters based on profile
+    getConversationStarters(profile) {
+        const starters = [];
+        
+        // Based on interests
+        if (profile.interests && profile.interests.length > 0) {
+            const interest = profile.interests[Math.floor(Math.random() * profile.interests.length)];
+            starters.push(
+                `Vedo che ti piace ${interest}! Qual è stata l'ultima volta che...`,
+                `Anche a me piace ${interest}! Tu preferisci...`,
+                `${interest}? Interessante! Raccontami di più...`
+            );
+        }
+        
+        // Based on bio
+        if (profile.bio) {
+            starters.push(
+                `Ho letto la tua bio e mi ha incuriosito... Cosa intendi quando dici...`,
+                `La tua descrizione mi ha colpito! Sei davvero così...`
+            );
+        }
+        
+        // Generic engaging starters
+        starters.push(
+            "Se potessi viaggiare ovunque domani, dove andresti? ✈️",
+            "Dimmi una cosa di te che nessuno indovinerebbe! 🤔",
+            "Qual è la cosa più spontanea che hai mai fatto? 😄",
+            "Se dovessi descriverti in 3 emoji, quali useresti? 🎭",
+            "Cosa ti ha fatto sorridere oggi? 😊",
+            "Preferiresti poter volare o essere invisibile? 🦸",
+            "Qual è il tuo comfort food preferito? 🍕",
+            "Se la tua vita fosse un film, che genere sarebbe? 🎬"
+        );
+        
+        return starters;
+    },
+    
+    // Get smart reply suggestions based on last message
+    getSmartReplies(lastMessage, context = {}) {
+        const message = lastMessage.toLowerCase();
+        const replies = [];
+        
+        // Question responses
+        if (message.includes('?')) {
+            if (message.includes('come stai') || message.includes('come va')) {
+                replies.push(
+                    "Benissimo grazie! Tu come stai? 😊",
+                    "Tutto bene! Meglio ora che stiamo chattando 😄",
+                    "Alla grande! Raccontami di te!"
+                );
+            } else if (message.includes('cosa fai') || message.includes('che fai')) {
+                replies.push(
+                    "Stavo proprio pensando a te! E tu? 😊",
+                    "Niente di speciale, mi hai incuriosito però!",
+                    "Chattando con una persona interessante 😉"
+                );
+            } else if (message.includes('lavoro') || message.includes('lavori')) {
+                replies.push(
+                    "Faccio [il tuo lavoro]! Mi piace molto perché...",
+                    "Lavoro in [settore]. È impegnativo ma stimolante!",
+                    "Preferisco raccontartelo di persona 😉"
+                );
+            }
+        }
+        
+        // Compliment responses
+        if (message.includes('bell') || message.includes('carino') || message.includes('attraente')) {
+            replies.push(
+                "Grazie mille! Anche tu non sei niente male 😊",
+                "Troppo gentile! Mi hai fatto arrossire 😄",
+                "Aww grazie! 🥰"
+            );
+        }
+        
+        // Generic engaging replies
+        if (replies.length === 0) {
+            replies.push(
+                "Raccontami di più! 😊",
+                "Interessante! E poi cosa è successo?",
+                "Ahaha davvero? 😄",
+                "Mi piace! Continua...",
+                "Wow, non me l'aspettavo!"
+            );
+        }
+        
+        return replies.slice(0, 3);
+    },
+    
+    // Get date ideas based on location and preferences
+    getDateIdeas(location, interests = []) {
+        const ideas = {
+            general: [
+                "☕ Aperitivo in un locale carino",
+                "🚶 Passeggiata nel centro storico",
+                "🍕 Cena in una pizzeria tipica",
+                "🎬 Cinema + gelato",
+                "🎨 Visita a una mostra o museo",
+                "🌳 Picnic al parco",
+                "🎮 Sala giochi retro",
+                "🎤 Karaoke serale",
+                "🍦 Tour delle gelaterie",
+                "📚 Libreria + caffè letterario"
+            ],
+            active: [
+                "🚴 Giro in bici",
+                "🧗 Arrampicata indoor",
+                "🎳 Bowling",
+                "⛳ Mini golf",
+                "🏊 Piscina"
+            ],
+            romantic: [
+                "🌅 Tramonto con vista",
+                "🍷 Degustazione vini",
+                "🎵 Concerto live",
+                "🌃 Cena con vista panoramica",
+                "💃 Lezione di ballo"
+            ],
+            casual: [
+                "🎯 Freccette al pub",
+                "🍻 Beer pong",
+                "🎪 Fiera o mercatino",
+                "🐕 Dog park (se avete cani)",
+                "🛍️ Shopping insieme"
+            ]
+        };
+        
+        // Combine based on interests
+        let suggestions = [...ideas.general];
+        
+        if (interests.includes('Sport') || interests.includes('Fitness')) {
+            suggestions = [...suggestions, ...ideas.active];
+        }
+        if (interests.includes('Romantico') || interests.includes('Musica')) {
+            suggestions = [...suggestions, ...ideas.romantic];
+        }
+        
+        // Shuffle and return top 5
+        return this.shuffle(suggestions).slice(0, 5);
+    },
+    
+    // Shuffle array helper
+    shuffle(array) {
+        const arr = [...array];
+        for (let i = arr.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+        return arr;
+    },
+    
+    // Analyze conversation and give tips
+    analyzeConversation(messages) {
+        const tips = [];
+        
+        if (messages.length < 5) {
+            tips.push("💡 Fai domande aperte per conoscerla meglio!");
+        }
+        
+        // Check if messages are too short
+        const avgLength = messages.reduce((sum, m) => sum + m.text.length, 0) / messages.length;
+        if (avgLength < 20) {
+            tips.push("💡 Prova a scrivere messaggi più dettagliati");
+        }
+        
+        // Check response time patterns
+        tips.push("💡 Non rispondere sempre subito - mantieni un po' di mistero!");
+        
+        // Suggest moving forward
+        if (messages.length > 20) {
+            tips.push("🎯 Sembra che vi troviate bene! Proponi un appuntamento?");
+        }
+        
+        return tips;
+    }
+};
+
+// ================================================================
+// 🎥 VIDEO DATE - Videochiamate Integrate
+// ================================================================
+
+const VideoDate = {
+    localStream: null,
+    remoteStream: null,
+    peerConnection: null,
+    callTimer: null,
+    callDuration: 0,
+    maxDuration: 180, // 3 minutes
+    isActive: false,
+    currentMatchId: null,
+    
+    // Configuration for WebRTC
+    config: {
+        iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' }
+        ]
+    },
+    
+    // Initialize video call
+    async startCall(matchId, matchName) {
+        this.currentMatchId = matchId;
+        
+        // Show video call modal
+        this.showCallModal(matchName);
+        
+        try {
+            // Get local media stream
+            this.localStream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: 'user', width: 640, height: 480 },
+                audio: true
+            });
+            
+            // Display local video
+            const localVideo = document.getElementById('localVideo');
+            if (localVideo) {
+                localVideo.srcObject = this.localStream;
+            }
+            
+            // Create peer connection
+            this.peerConnection = new RTCPeerConnection(this.config);
+            
+            // Add local tracks
+            this.localStream.getTracks().forEach(track => {
+                this.peerConnection.addTrack(track, this.localStream);
+            });
+            
+            // Handle remote stream
+            this.peerConnection.ontrack = (event) => {
+                const remoteVideo = document.getElementById('remoteVideo');
+                if (remoteVideo) {
+                    remoteVideo.srcObject = event.streams[0];
+                }
+            };
+            
+            // Handle ICE candidates
+            this.peerConnection.onicecandidate = (event) => {
+                if (event.candidate) {
+                    this.sendSignal('ice-candidate', event.candidate);
+                }
+            };
+            
+            // Create and send offer
+            const offer = await this.peerConnection.createOffer();
+            await this.peerConnection.setLocalDescription(offer);
+            this.sendSignal('offer', offer);
+            
+            // Start timer
+            this.startTimer();
+            this.isActive = true;
+            
+        } catch (error) {
+            console.error('Errore avvio chiamata:', error);
+            this.showCallError('Impossibile accedere alla fotocamera. Verifica i permessi.');
+        }
+    },
+    
+    // Handle incoming call
+    async handleIncomingCall(matchId, matchName, offer) {
+        // Show incoming call UI
+        this.showIncomingCallModal(matchName, async (accepted) => {
+            if (accepted) {
+                this.currentMatchId = matchId;
+                await this.acceptCall(offer);
+            } else {
+                this.sendSignal('call-rejected', {});
+            }
+        });
+    },
+    
+    // Accept incoming call
+    async acceptCall(offer) {
+        try {
+            this.localStream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: 'user' },
+                audio: true
+            });
+            
+            const localVideo = document.getElementById('localVideo');
+            if (localVideo) localVideo.srcObject = this.localStream;
+            
+            this.peerConnection = new RTCPeerConnection(this.config);
+            
+            this.localStream.getTracks().forEach(track => {
+                this.peerConnection.addTrack(track, this.localStream);
+            });
+            
+            this.peerConnection.ontrack = (event) => {
+                const remoteVideo = document.getElementById('remoteVideo');
+                if (remoteVideo) remoteVideo.srcObject = event.streams[0];
+            };
+            
+            this.peerConnection.onicecandidate = (event) => {
+                if (event.candidate) {
+                    this.sendSignal('ice-candidate', event.candidate);
+                }
+            };
+            
+            await this.peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+            const answer = await this.peerConnection.createAnswer();
+            await this.peerConnection.setLocalDescription(answer);
+            this.sendSignal('answer', answer);
+            
+            this.startTimer();
+            this.isActive = true;
+            
+        } catch (error) {
+            console.error('Errore accettazione chiamata:', error);
+        }
+    },
+    
+    // Handle answer from remote peer
+    async handleAnswer(answer) {
+        if (this.peerConnection) {
+            await this.peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+        }
+    },
+    
+    // Handle ICE candidate
+    async handleIceCandidate(candidate) {
+        if (this.peerConnection) {
+            await this.peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+        }
+    },
+    
+    // Send signaling data via Firebase
+    sendSignal(type, data) {
+        if (!this.currentMatchId || !currentUser) return;
+        
+        db.collection('videoCalls').add({
+            matchId: this.currentMatchId,
+            from: currentUser.uid,
+            type: type,
+            data: JSON.stringify(data),
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+    },
+    
+    // Start call timer
+    startTimer() {
+        this.callDuration = 0;
+        const timerDisplay = document.getElementById('callTimer');
+        
+        this.callTimer = setInterval(() => {
+            this.callDuration++;
+            const remaining = this.maxDuration - this.callDuration;
+            
+            if (timerDisplay) {
+                const mins = Math.floor(remaining / 60);
+                const secs = remaining % 60;
+                timerDisplay.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+                
+                // Warning when 30 seconds left
+                if (remaining === 30) {
+                    timerDisplay.style.color = '#ff6b6b';
+                    showToast('⏰ 30 secondi rimanenti!', 'warning');
+                }
+            }
+            
+            // End call when time's up
+            if (this.callDuration >= this.maxDuration) {
+                this.showExtendOption();
+            }
+        }, 1000);
+    },
+    
+    // Show option to extend call
+    showExtendOption() {
+        clearInterval(this.callTimer);
+        
+        const modal = document.createElement('div');
+        modal.className = 'video-extend-modal';
+        modal.innerHTML = `
+            <div class="extend-content">
+                <h3>⏰ Tempo Scaduto!</h3>
+                <p>Vi state trovando bene?</p>
+                <div class="extend-buttons">
+                    <button onclick="VideoDate.extendCall()" class="extend-btn">
+                        ✅ Continua (+3 min)
+                    </button>
+                    <button onclick="VideoDate.endCall()" class="end-btn">
+                        👋 Termina
+                    </button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    },
+    
+    // Extend call
+    extendCall() {
+        document.querySelector('.video-extend-modal')?.remove();
+        this.callDuration = 0;
+        this.startTimer();
+        showToast('🎉 Altri 3 minuti aggiunti!', 'success');
+    },
+    
+    // End call
+    endCall() {
+        clearInterval(this.callTimer);
+        this.isActive = false;
+        
+        // Stop all tracks
+        if (this.localStream) {
+            this.localStream.getTracks().forEach(track => track.stop());
+        }
+        
+        // Close peer connection
+        if (this.peerConnection) {
+            this.peerConnection.close();
+            this.peerConnection = null;
+        }
+        
+        // Remove modals
+        document.querySelector('.video-call-modal')?.remove();
+        document.querySelector('.video-extend-modal')?.remove();
+        
+        // Send end signal
+        this.sendSignal('call-ended', {});
+        
+        showToast('📞 Chiamata terminata', 'info');
+    },
+    
+    // Show call modal
+    showCallModal(matchName) {
+        const modal = document.createElement('div');
+        modal.className = 'video-call-modal';
+        modal.innerHTML = `
+            <div class="video-call-container">
+                <div class="video-header">
+                    <h3>🎥 Video Date con ${matchName}</h3>
+                    <span id="callTimer" class="call-timer">3:00</span>
+                </div>
+                <div class="video-grid">
+                    <div class="video-wrapper remote-video-wrapper">
+                        <video id="remoteVideo" autoplay playsinline></video>
+                        <span class="video-label">${matchName}</span>
+                    </div>
+                    <div class="video-wrapper local-video-wrapper">
+                        <video id="localVideo" autoplay playsinline muted></video>
+                        <span class="video-label">Tu</span>
+                    </div>
+                </div>
+                <div class="video-controls">
+                    <button onclick="VideoDate.toggleMute()" class="control-btn" id="muteBtn">
+                        <i class="fas fa-microphone"></i>
+                    </button>
+                    <button onclick="VideoDate.toggleVideo()" class="control-btn" id="videoBtn">
+                        <i class="fas fa-video"></i>
+                    </button>
+                    <button onclick="VideoDate.endCall()" class="control-btn end-call-btn">
+                        <i class="fas fa-phone-slash"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    },
+    
+    // Toggle mute
+    toggleMute() {
+        if (this.localStream) {
+            const audioTrack = this.localStream.getAudioTracks()[0];
+            audioTrack.enabled = !audioTrack.enabled;
+            
+            const btn = document.getElementById('muteBtn');
+            btn.innerHTML = audioTrack.enabled ? 
+                '<i class="fas fa-microphone"></i>' : 
+                '<i class="fas fa-microphone-slash"></i>';
+            btn.classList.toggle('muted', !audioTrack.enabled);
+        }
+    },
+    
+    // Toggle video
+    toggleVideo() {
+        if (this.localStream) {
+            const videoTrack = this.localStream.getVideoTracks()[0];
+            videoTrack.enabled = !videoTrack.enabled;
+            
+            const btn = document.getElementById('videoBtn');
+            btn.innerHTML = videoTrack.enabled ? 
+                '<i class="fas fa-video"></i>' : 
+                '<i class="fas fa-video-slash"></i>';
+            btn.classList.toggle('muted', !videoTrack.enabled);
+        }
+    },
+    
+    // Show incoming call modal
+    showIncomingCallModal(matchName, callback) {
+        const modal = document.createElement('div');
+        modal.className = 'incoming-call-modal';
+        modal.innerHTML = `
+            <div class="incoming-call-content">
+                <div class="caller-avatar">🎥</div>
+                <h3>${matchName} ti sta chiamando...</h3>
+                <p>Video Date in arrivo!</p>
+                <div class="incoming-call-buttons">
+                    <button onclick="this.closest('.incoming-call-modal').remove(); (${callback})(false)" class="decline-btn">
+                        <i class="fas fa-phone-slash"></i> Rifiuta
+                    </button>
+                    <button onclick="this.closest('.incoming-call-modal').remove(); (${callback})(true)" class="accept-btn">
+                        <i class="fas fa-video"></i> Accetta
+                    </button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        
+        // Play ringtone
+        // const ringtone = new Audio('/sounds/ringtone.mp3');
+        // ringtone.loop = true;
+        // ringtone.play();
+    },
+    
+    // Show error
+    showCallError(message) {
+        document.querySelector('.video-call-modal')?.remove();
+        showToast('❌ ' + message, 'error');
+    }
+};
+
+// ================================================================
+// 📧 WELCOME EXPERIENCE
+// ================================================================
+
+const WelcomeExperience = {
+    // Show welcome modal for new users
+    showWelcome(userName) {
+        const modal = document.createElement('div');
+        modal.className = 'welcome-modal-overlay';
+        modal.innerHTML = `
+            <div class="welcome-modal">
+                <div class="welcome-confetti"></div>
+                <div class="welcome-content">
+                    <div class="welcome-icon">🔥</div>
+                    <h1>Benvenuto su FlameMatch!</h1>
+                    <h2>Ciao ${userName}! 👋</h2>
+                    <p>Siamo felicissimi di averti qui. Ecco cosa puoi fare:</p>
+                    
+                    <div class="welcome-features">
+                        <div class="welcome-feature">
+                            <span class="feature-icon">🎤</span>
+                            <div>
+                                <strong>Voice Vibe</strong>
+                                <p>Registra un audio di 15 secondi per presentarti</p>
+                            </div>
+                        </div>
+                        <div class="welcome-feature">
+                            <span class="feature-icon">🎮</span>
+                            <div>
+                                <strong>Icebreaker Games</strong>
+                                <p>Rompi il ghiaccio con giochi divertenti</p>
+                            </div>
+                        </div>
+                        <div class="welcome-feature">
+                            <span class="feature-icon">📍</span>
+                            <div>
+                                <strong>Vicino a Te</strong>
+                                <p>Trova persone nella tua zona</p>
+                            </div>
+                        </div>
+                        <div class="welcome-feature">
+                            <span class="feature-icon">🛡️</span>
+                            <div>
+                                <strong>Profilo Verificato</strong>
+                                <p>Verifica il tuo profilo per più visibilità</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="welcome-tip">
+                        💡 <strong>Consiglio:</strong> I profili completi ricevono 10x più match!
+                    </div>
+                    
+                    <button class="welcome-start-btn" onclick="WelcomeExperience.close()">
+                        Inizia a Esplorare 🚀
+                    </button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        
+        // Add confetti animation
+        this.showConfetti();
+    },
+    
+    // Close welcome modal
+    close() {
+        document.querySelector('.welcome-modal-overlay')?.remove();
+        
+        // Mark welcome as shown
+        if (currentUser) {
+            db.collection('users').doc(currentUser.uid).update({
+                welcomeShown: true
+            });
+        }
+    },
+    
+    // Check if should show welcome
+    async checkAndShow() {
+        if (!currentUser) return;
+        
+        const userDoc = await db.collection('users').doc(currentUser.uid).get();
+        const userData = userDoc.data();
+        
+        if (userData && !userData.welcomeShown) {
+            setTimeout(() => {
+                this.showWelcome(userData.name || 'Nuovo Utente');
+            }, 1000);
+        }
+    },
+    
+    // Confetti effect
+    showConfetti() {
+        const colors = ['#ff416c', '#ff4b2b', '#ffd700', '#ff69b4', '#00ff88'];
+        const confettiContainer = document.querySelector('.welcome-confetti');
+        if (!confettiContainer) return;
+        
+        for (let i = 0; i < 50; i++) {
+            const confetti = document.createElement('div');
+            confetti.className = 'confetti-piece';
+            confetti.style.cssText = `
+                left: ${Math.random() * 100}%;
+                background: ${colors[Math.floor(Math.random() * colors.length)]};
+                animation-delay: ${Math.random() * 3}s;
+                animation-duration: ${3 + Math.random() * 2}s;
+            `;
+            confettiContainer.appendChild(confetti);
+        }
+    }
+};
+
+// Initialize notifications when app loads
+document.addEventListener('DOMContentLoaded', () => {
+    // Initialize push notifications after a delay
+    setTimeout(() => {
+        NotificationManager.init();
+    }, 2000);
+});
+
+// Make functions globally available
+window.VideoDate = VideoDate;
+window.AIWingman = AIWingman;
+window.WelcomeExperience = WelcomeExperience;
+window.NotificationManager = NotificationManager;
+
+
+// ================================================================
+// 🧠 AI WINGMAN UI FUNCTIONS
+// ================================================================
+
+let aiPanelVisible = false;
+
+function toggleAIWingman() {
+    const panel = document.getElementById('aiSuggestionsPanel');
+    aiPanelVisible = !aiPanelVisible;
+    
+    if (aiPanelVisible) {
+        showAISuggestions();
+        panel.style.display = 'block';
+    } else {
+        panel.style.display = 'none';
+    }
+}
+
+async function showAISuggestions() {
+    const panel = document.getElementById('aiSuggestionsList');
+    if (!panel) return;
+    
+    // Get current match profile
+    let matchProfile = null;
+    if (currentChatMatchId) {
+        const matchDoc = await db.collection('matches').doc(currentChatMatchId).get();
+        if (matchDoc.exists) {
+            const matchData = matchDoc.data();
+            const otherUserId = matchData.users.find(id => id !== currentUser.uid);
+            const userDoc = await db.collection('users').doc(otherUserId).get();
+            matchProfile = userDoc.data();
+        }
+    }
+    
+    // Get conversation starters
+    const starters = AIWingman.getConversationStarters(matchProfile || {});
+    
+    // Get last messages for smart replies
+    const chatMessages = document.querySelectorAll('.message.received');
+    let smartReplies = [];
+    if (chatMessages.length > 0) {
+        const lastMessage = chatMessages[chatMessages.length - 1]?.querySelector('.message-text')?.textContent || '';
+        smartReplies = AIWingman.getSmartReplies(lastMessage);
+    }
+    
+    // Get date ideas
+    const dateIdeas = AIWingman.getDateIdeas(matchProfile?.location || '');
+    
+    // Build UI
+    let html = '';
+    
+    // Smart replies section
+    if (smartReplies.length > 0) {
+        html += '<div class="ai-section"><small style="color: rgba(255,255,255,0.5); display: block; margin-bottom: 8px;">💬 Risposte suggerite:</small>';
+        smartReplies.forEach(reply => {
+            html += `<div class="ai-suggestion" onclick="useAISuggestion('${reply.replace(/'/g, "\\'")}')">${reply}</div>`;
+        });
+        html += '</div>';
+    }
+    
+    // Conversation starters
+    html += '<div class="ai-section" style="margin-top: 15px;"><small style="color: rgba(255,255,255,0.5); display: block; margin-bottom: 8px;">🚀 Inizia conversazione:</small>';
+    starters.slice(0, 3).forEach(starter => {
+        html += `<div class="ai-suggestion" onclick="useAISuggestion('${starter.replace(/'/g, "\\'")}')">${starter}</div>`;
+    });
+    html += '</div>';
+    
+    // Date ideas
+    html += '<div class="ai-section date-ideas-panel" style="margin-top: 15px; padding: 15px; border-radius: 12px;"><small style="color: rgba(255,255,255,0.5); display: block; margin-bottom: 8px;">📍 Idee per appuntamento:</small>';
+    dateIdeas.slice(0, 3).forEach(idea => {
+        html += `<div class="ai-suggestion" onclick="useAISuggestion('Ti va di andare a: ${idea.replace(/'/g, "\\'")}')">${idea}</div>`;
+    });
+    html += '</div>';
+    
+    panel.innerHTML = html;
+}
+
+function useAISuggestion(text) {
+    const input = document.getElementById('chatInput');
+    if (input) {
+        input.value = text;
+        input.focus();
+    }
+    toggleAIWingman(); // Close panel
+    showToast('💡 Suggerimento copiato!', 'success');
+}
+
+// ================================================================
+// 🎥 VIDEO DATE UI FUNCTIONS
+// ================================================================
+
+async function startVideoDate() {
+    if (!currentChatMatchId) {
+        showToast('Seleziona prima una chat!', 'error');
+        return;
+    }
+    
+    // Get match info
+    const matchDoc = await db.collection('matches').doc(currentChatMatchId).get();
+    if (!matchDoc.exists) {
+        showToast('Match non trovato', 'error');
+        return;
+    }
+    
+    const matchData = matchDoc.data();
+    const otherUserId = matchData.users.find(id => id !== currentUser.uid);
+    const userDoc = await db.collection('users').doc(otherUserId).get();
+    const matchName = userDoc.exists ? userDoc.data().name : 'Match';
+    
+    // Confirm before starting
+    if (confirm(`Vuoi avviare una Video Date con ${matchName}? (3 minuti)`)) {
+        VideoDate.startCall(currentChatMatchId, matchName);
+    }
+}
+
+// Listen for incoming video calls
+function listenForVideoCalls() {
+    if (!currentUser) return;
+    
+    db.collection('videoCalls')
+        .where('to', '==', currentUser.uid)
+        .where('type', '==', 'offer')
+        .orderBy('timestamp', 'desc')
+        .limit(1)
+        .onSnapshot(snapshot => {
+            snapshot.docChanges().forEach(change => {
+                if (change.type === 'added') {
+                    const data = change.doc.data();
+                    // Check if call is recent (within last 30 seconds)
+                    const callTime = data.timestamp?.toDate?.() || new Date();
+                    const now = new Date();
+                    if ((now - callTime) < 30000) {
+                        handleIncomingVideoCall(data);
+                    }
+                }
+            });
+        });
+}
+
+async function handleIncomingVideoCall(callData) {
+    const userDoc = await db.collection('users').doc(callData.from).get();
+    const callerName = userDoc.exists ? userDoc.data().name : 'Qualcuno';
+    
+    VideoDate.handleIncomingCall(
+        callData.matchId, 
+        callerName, 
+        JSON.parse(callData.data)
+    );
+}
+
+// Initialize video call listener when user logs in
+auth.onAuthStateChanged(user => {
+    if (user) {
+        setTimeout(listenForVideoCalls, 3000);
+    }
+});
+
+// ================================================================
+// 📧 CHECK WELCOME ON LOGIN
+// ================================================================
+
+// Check welcome experience after login
+const originalOnLogin = window.onUserLogin;
+window.onUserLogin = function(user) {
+    if (originalOnLogin) originalOnLogin(user);
+    
+    // Check if should show welcome
+    setTimeout(() => {
+        WelcomeExperience.checkAndShow();
+    }, 2000);
+};
+
+// Also check on page load if already logged in
+setTimeout(() => {
+    if (currentUser) {
+        WelcomeExperience.checkAndShow();
+    }
+}, 3000);
+
