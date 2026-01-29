@@ -7489,13 +7489,30 @@ const WelcomeExperience = {
                         💡 <strong>Consiglio:</strong> I profili completi ricevono 10x più match!
                     </div>
                     
-                    <button class="welcome-start-btn" onclick="WelcomeExperience.close(); return false;" style="cursor: pointer; z-index: 10000;">
+                    <button class="welcome-start-btn" id="welcomeCloseBtn" style="cursor: pointer; z-index: 10000;">
                         Inizia a Esplorare 🚀
                     </button>
                 </div>
             </div>
         `;
         document.body.appendChild(modal);
+        
+        // Attach close handler
+        const closeBtn = document.getElementById('welcomeCloseBtn');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                WelcomeExperience.close();
+            });
+        }
+        
+        // Also close on overlay click
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                WelcomeExperience.close();
+            }
+        });
         
         // Add confetti animation
         this.showConfetti();
