@@ -5159,8 +5159,11 @@ async function openUserProfile(userId) {
                     ${user.bio ? `<p style="color: rgba(255,255,255,0.9); margin: 10px 0; font-size: 1em;">"${user.bio}"</p>` : 
                       isOwnProfile ? `<p style="color: rgba(255,255,255,0.6); margin: 10px 0; font-style: italic; font-size: 0.9em;">Aggiungi una bio per farti conoscere meglio</p>` : ''}
                     
-                    ${user.location ? `<p style="color: rgba(255,255,255,0.8); font-size: 0.9em; margin: 5px 0;"><i class="fas fa-map-marker-alt"></i> ${user.location}</p>` : 
-                      isOwnProfile ? `<p style="color: rgba(255,255,255,0.5); font-size: 0.85em;"><i class="fas fa-map-marker-alt"></i> Posizione non impostata</p>` : ''}
+                    ${user.location ? 
+                      (isOwnProfile ? 
+                        `<p onclick="setMyLocation()" style="color: rgba(255,255,255,0.8); font-size: 0.9em; margin: 5px 0; cursor: pointer; transition: all 0.3s;" onmouseover="this.style.color='#ff6b6b'" onmouseout="this.style.color='rgba(255,255,255,0.8)'"><i class="fas fa-map-marker-alt"></i> ${user.location} <i class="fas fa-edit" style="font-size: 0.75em; margin-left: 5px; opacity: 0.6;"></i></p>` :
+                        `<p style="color: rgba(255,255,255,0.8); font-size: 0.9em; margin: 5px 0;"><i class="fas fa-map-marker-alt"></i> ${user.location}</p>`) : 
+                      isOwnProfile ? `<p onclick="setMyLocation()" style="color: rgba(255,255,255,0.5); font-size: 0.85em; cursor: pointer; transition: all 0.3s;" onmouseover="this.style.color='#ff6b6b'" onmouseout="this.style.color='rgba(255,255,255,0.5)'"><i class="fas fa-map-marker-alt"></i> Posizione non impostata <i class="fas fa-edit" style="font-size: 0.8em; margin-left: 5px;"></i></p>` : ''}
                     
                     ${user.job ? `<p style="color: rgba(255,255,255,0.8); font-size: 0.9em; margin: 5px 0;"><i class="fas fa-briefcase"></i> ${user.job}</p>` : ''}
                     
@@ -6539,3 +6542,230 @@ window.selectOption = selectOption;
 window.selectEmoji = selectEmoji;
 window.submitEmojiAnswer = submitEmojiAnswer;
 window.openChatWithCurrentMatch = openChatWithCurrentMatch;
+
+// ================================================================
+// SET MY LOCATION - Imposta posizione profilo
+// ================================================================
+
+async function setMyLocation() {
+    if (!currentUser) {
+        showToast('Devi essere loggato', 'error');
+        return;
+    }
+    
+    // Mostra opzioni
+    const choice = await showLocationOptions();
+    
+    if (choice === 'gps') {
+        await setLocationFromGPS();
+    } else if (choice === 'manual') {
+        await setLocationManually();
+    }
+}
+
+function showLocationOptions() {
+    return new Promise((resolve) => {
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.id = 'locationOptionsModal';
+        modal.innerHTML = `
+            <div class="modal-content" style="max-width: 400px; text-align: center;">
+                <h2 style="margin-bottom: 20px;">
+                    <i class="fas fa-map-marker-alt" style="color: #ff6b6b;"></i> 
+                    Imposta Posizione
+                </h2>
+                <p style="color: #aaa; margin-bottom: 25px;">
+                    Come vuoi impostare la tua posizione?
+                </p>
+                
+                <div style="display: flex; flex-direction: column; gap: 15px;">
+                    <button onclick="document.getElementById('locationOptionsModal').remove(); window.locationChoice('gps')" 
+                            class="btn-primary" style="padding: 15px 25px; font-size: 1em;">
+                        <i class="fas fa-crosshairs"></i> Usa GPS Automatico
+                    </button>
+                    
+                    <button onclick="document.getElementById('locationOptionsModal').remove(); window.locationChoice('manual')" 
+                            class="btn-secondary" style="padding: 15px 25px; font-size: 1em;">
+                        <i class="fas fa-keyboard"></i> Inserisci Manualmente
+                    </button>
+                    
+                    <button onclick="document.getElementById('locationOptionsModal').remove(); window.locationChoice(null)" 
+                            style="background: none; border: none; color: #888; cursor: pointer; padding: 10px;">
+                        Annulla
+                    </button>
+                </div>
+            </div>
+        `;
+        modal.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); display: flex; align-items: center; justify-content: center; z-index: 9999;';
+        document.body.appendChild(modal);
+        
+        window.locationChoice = (choice) => {
+            resolve(choice);
+        };
+    });
+}
+
+async function setLocationFromGPS() {
+    showToast('📍 Rilevamento posizione...', 'info');
+    
+    if (!navigator.geolocation) {
+        showToast('Geolocalizzazione non supportata', 'error');
+        return;
+    }
+    
+    try {
+        const position = await new Promise((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0
+            });
+        });
+        
+        const { latitude, longitude } = position.coords;
+        
+        // Reverse geocoding
+        showToast('🔍 Identificazione città...', 'info');
+        
+        try {
+            const response = await fetch(
+                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&addressdetails=1`,
+                { headers: { 'Accept-Language': 'it' } }
+            );
+            const data = await response.json();
+            
+            // Estrai città/paese
+            const address = data.address;
+            let locationName = address.city || address.town || address.village || address.municipality || address.county || 'Posizione sconosciuta';
+            
+            // Aggiungi regione/provincia se disponibile
+            if (address.state || address.county) {
+                const region = address.state || address.county;
+                if (region !== locationName) {
+                    locationName += `, ${region}`;
+                }
+            }
+            
+            // Salva su Firebase
+            await saveLocationToProfile(locationName, latitude, longitude);
+            
+        } catch (geoError) {
+            console.error('Errore geocoding:', geoError);
+            // Salva comunque le coordinate
+            await saveLocationToProfile(`📍 ${latitude.toFixed(2)}, ${longitude.toFixed(2)}`, latitude, longitude);
+        }
+        
+    } catch (error) {
+        console.error('Errore geolocalizzazione:', error);
+        if (error.code === 1) {
+            showToast('Permesso posizione negato. Abilita la geolocalizzazione.', 'error');
+        } else if (error.code === 2) {
+            showToast('Posizione non disponibile', 'error');
+        } else if (error.code === 3) {
+            showToast('Timeout - riprova', 'error');
+        } else {
+            showToast('Errore nel rilevamento posizione', 'error');
+        }
+    }
+}
+
+async function setLocationManually() {
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.id = 'manualLocationModal';
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 400px;">
+            <h2 style="margin-bottom: 20px; text-align: center;">
+                <i class="fas fa-keyboard" style="color: #ff6b6b;"></i> 
+                Inserisci Posizione
+            </h2>
+            
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 8px; color: #aaa;">Città</label>
+                <input type="text" id="manualCity" placeholder="es. Milano, Roma, Napoli..." 
+                       style="width: 100%; padding: 15px; border-radius: 10px; border: 1px solid #333; background: #2a2a2a; color: white; font-size: 1em;">
+            </div>
+            
+            <div style="margin-bottom: 25px;">
+                <label style="display: block; margin-bottom: 8px; color: #aaa;">Provincia/Regione (opzionale)</label>
+                <input type="text" id="manualRegion" placeholder="es. Lombardia, Lazio..." 
+                       style="width: 100%; padding: 15px; border-radius: 10px; border: 1px solid #333; background: #2a2a2a; color: white; font-size: 1em;">
+            </div>
+            
+            <div style="display: flex; gap: 15px;">
+                <button onclick="document.getElementById('manualLocationModal').remove()" 
+                        class="btn-secondary" style="flex: 1; padding: 12px;">
+                    Annulla
+                </button>
+                <button onclick="saveManualLocation()" 
+                        class="btn-primary" style="flex: 1; padding: 12px;">
+                    <i class="fas fa-check"></i> Salva
+                </button>
+            </div>
+        </div>
+    `;
+    modal.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); display: flex; align-items: center; justify-content: center; z-index: 9999;';
+    document.body.appendChild(modal);
+    
+    // Focus sull'input
+    setTimeout(() => document.getElementById('manualCity').focus(), 100);
+}
+
+async function saveManualLocation() {
+    const city = document.getElementById('manualCity').value.trim();
+    const region = document.getElementById('manualRegion').value.trim();
+    
+    if (!city) {
+        showToast('Inserisci almeno la città', 'error');
+        return;
+    }
+    
+    let locationName = city;
+    if (region) {
+        locationName += `, ${region}`;
+    }
+    
+    // Chiudi modal
+    document.getElementById('manualLocationModal').remove();
+    
+    // Salva senza coordinate (posizione manuale)
+    await saveLocationToProfile(locationName, null, null);
+}
+
+async function saveLocationToProfile(locationName, lat, lng) {
+    try {
+        const updateData = {
+            location: locationName,
+            locationUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        
+        // Se abbiamo coordinate, salvale per "Vicino a te"
+        if (lat !== null && lng !== null) {
+            updateData.coordinates = new firebase.firestore.GeoPoint(lat, lng);
+            updateData.lastLocationUpdate = firebase.firestore.FieldValue.serverTimestamp();
+        }
+        
+        await db.collection('users').doc(currentUser.uid).update(updateData);
+        
+        // Aggiorna cache locale
+        if (currentUserProfile) {
+            currentUserProfile.location = locationName;
+            if (lat !== null && lng !== null) {
+                currentUserProfile.coordinates = { latitude: lat, longitude: lng };
+            }
+        }
+        
+        showToast(`✅ Posizione impostata: ${locationName}`, 'success');
+        
+        // Ricarica il profilo per aggiornare la visualizzazione
+        if (document.getElementById('userProfileModal')) {
+            setTimeout(() => {
+                viewUserProfile(currentUser.uid);
+            }, 500);
+        }
+        
+    } catch (error) {
+        console.error('Errore salvataggio posizione:', error);
+        showToast('Errore nel salvataggio', 'error');
+    }
+}
