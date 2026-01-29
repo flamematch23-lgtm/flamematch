@@ -4913,6 +4913,28 @@ async function openUserProfile(userId) {
         const verifiedBadge = user.isVerified ? '<span class="verified-badge"><i class="fas fa-check-circle"></i></span>' : '';
         
         // Crea modal profilo completo
+        // Determina avatar (foto o iniziale)
+        const hasPhoto = user.photos && user.photos.length > 0 && user.photos[0];
+        const avatarContent = hasPhoto 
+            ? `<img src="${user.photos[0]}" alt="${user.name}" style="width: 120px; height: 120px; border-radius: 50%; border: 4px solid white; object-fit: cover;">`
+            : `<div style="width: 120px; height: 120px; border-radius: 50%; border: 4px solid white; background: linear-gradient(135deg, #667eea, #764ba2); display: flex; align-items: center; justify-content: center; font-size: 48px; color: white; font-weight: bold; margin: 0 auto;">${(user.name || 'U')[0].toUpperCase()}</div>`;
+        
+        // Badge Premium
+        let premiumBadge = '';
+        if (user.subscriptionPlan === 'platinum') {
+            premiumBadge = '<span style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 4px 12px; border-radius: 20px; font-size: 0.75em; margin-left: 8px;"><i class="fas fa-gem"></i> Platinum</span>';
+        } else if (user.subscriptionPlan === 'gold') {
+            premiumBadge = '<span style="background: linear-gradient(135deg, #f5af19, #f12711); color: white; padding: 4px 12px; border-radius: 20px; font-size: 0.75em; margin-left: 8px;"><i class="fas fa-crown"></i> Gold</span>';
+        }
+        
+        // Interessi
+        const interests = user.interests || [];
+        const interestsHtml = interests.length > 0 
+            ? `<div style="display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 12px;">
+                ${interests.map(i => `<span style="background: rgba(255,255,255,0.2); color: white; padding: 4px 12px; border-radius: 15px; font-size: 0.85em;">${i}</span>`).join('')}
+               </div>` 
+            : '';
+        
         let modal = document.getElementById('userProfileModal');
         if (!modal) {
             modal = document.createElement('div');
@@ -4922,53 +4944,97 @@ async function openUserProfile(userId) {
         }
         
         modal.innerHTML = `
-            <div class="modal-content user-profile-modal" style="max-width: 600px; max-height: 90vh; overflow-y: auto;">
+            <div class="modal-content user-profile-modal" style="max-width: 600px; max-height: 90vh; overflow-y: auto; border-radius: 20px;">
                 <button class="modal-close" onclick="closeUserProfileModal()">&times;</button>
                 
                 <!-- Header Profilo -->
-                <div class="profile-header" style="text-align: center; padding: 20px; background: linear-gradient(135deg, var(--primary), var(--secondary)); border-radius: 15px 15px 0 0;">
-                    <img src="${user.photos?.[0] || 'https://via.placeholder.com/150'}" 
-                         alt="${user.name}" 
-                         style="width: 120px; height: 120px; border-radius: 50%; border: 4px solid white; object-fit: cover;">
-                    <h2 style="color: white; margin: 10px 0 5px;">${user.name || 'Utente'}${age ? ', ' + age : ''} ${verifiedBadge}</h2>
-                    <p style="color: rgba(255,255,255,0.8); margin: 0;">${user.bio || ''}</p>
-                    ${user.location ? `<p style="color: rgba(255,255,255,0.7); font-size: 0.9em;"><i class="fas fa-map-marker-alt"></i> ${user.location}</p>` : ''}
+                <div class="profile-header" style="text-align: center; padding: 25px 20px; background: linear-gradient(135deg, var(--primary), var(--secondary)); border-radius: 20px 20px 0 0;">
+                    ${isOwnProfile && !hasPhoto ? `
+                        <div style="position: relative; display: inline-block; cursor: pointer;" onclick="openPhotoUpload()">
+                            ${avatarContent}
+                            <div style="position: absolute; bottom: 5px; right: 5px; background: white; border-radius: 50%; width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
+                                <i class="fas fa-camera" style="color: var(--primary);"></i>
+                            </div>
+                        </div>
+                    ` : avatarContent}
+                    
+                    <h2 style="color: white; margin: 15px 0 5px; display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px;">
+                        ${user.name || 'Utente'}${age ? ', ' + age : ''} 
+                        ${verifiedBadge}
+                        ${premiumBadge}
+                    </h2>
+                    
+                    ${user.bio ? `<p style="color: rgba(255,255,255,0.9); margin: 10px 0; font-size: 1em;">"${user.bio}"</p>` : 
+                      isOwnProfile ? `<p style="color: rgba(255,255,255,0.6); margin: 10px 0; font-style: italic; font-size: 0.9em;">Aggiungi una bio per farti conoscere meglio</p>` : ''}
+                    
+                    ${user.location ? `<p style="color: rgba(255,255,255,0.8); font-size: 0.9em; margin: 5px 0;"><i class="fas fa-map-marker-alt"></i> ${user.location}</p>` : 
+                      isOwnProfile ? `<p style="color: rgba(255,255,255,0.5); font-size: 0.85em;"><i class="fas fa-map-marker-alt"></i> Posizione non impostata</p>` : ''}
+                    
+                    ${user.job ? `<p style="color: rgba(255,255,255,0.8); font-size: 0.9em; margin: 5px 0;"><i class="fas fa-briefcase"></i> ${user.job}</p>` : ''}
+                    
+                    ${interestsHtml}
                 </div>
                 
                 <!-- Stats -->
-                <div class="profile-stats" style="display: flex; justify-content: space-around; padding: 15px; background: var(--card-bg); border-bottom: 1px solid var(--border);">
+                <div class="profile-stats" style="display: grid; grid-template-columns: repeat(${user.isVerified ? 4 : 3}, 1fr); padding: 20px 15px; background: var(--card-bg); border-bottom: 1px solid var(--border);">
                     <div style="text-align: center;">
                         <div id="postCount" style="font-size: 1.5em; font-weight: bold; color: var(--primary);">0</div>
-                        <div style="font-size: 0.8em; color: var(--text-secondary);">Post</div>
+                        <div style="font-size: 0.75em; color: var(--text-secondary);">Post</div>
                     </div>
                     <div style="text-align: center;">
                         <div style="font-size: 1.5em; font-weight: bold; color: var(--primary);">${user.likesReceived || 0}</div>
-                        <div style="font-size: 0.8em; color: var(--text-secondary);">Like Ricevuti</div>
+                        <div style="font-size: 0.75em; color: var(--text-secondary);">Like</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 1.5em; font-weight: bold; color: var(--primary);">${user.matchCount || 0}</div>
+                        <div style="font-size: 0.75em; color: var(--text-secondary);">Match</div>
                     </div>
                     ${user.isVerified ? `
                     <div style="text-align: center;">
                         <div style="font-size: 1.5em; color: #4CAF50;"><i class="fas fa-check-circle"></i></div>
-                        <div style="font-size: 0.8em; color: var(--text-secondary);">Verificato</div>
+                        <div style="font-size: 0.75em; color: var(--text-secondary);">Verificato</div>
                     </div>
                     ` : ''}
                 </div>
                 
                 <!-- Azioni -->
-                <div style="padding: 15px; display: flex; gap: 10px; justify-content: center;">
+                <div style="padding: 15px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
                     ${isOwnProfile ? `
-                        <button onclick="openCreatePostModal()" class="btn-primary" style="flex: 1;">
+                        <button onclick="closeUserProfileModal(); openProfileSettings()" class="btn-secondary" style="flex: 1; min-width: 140px;">
+                            <i class="fas fa-edit"></i> Modifica Profilo
+                        </button>
+                        <button onclick="openCreatePostModal()" class="btn-primary" style="flex: 1; min-width: 140px;">
                             <i class="fas fa-plus"></i> Crea Post
                         </button>
                     ` : `
-                        <button onclick="startChatWithUser('${userId}')" class="btn-primary" style="flex: 1;">
+                        <button onclick="likeUserFromProfile('${userId}')" class="btn-secondary" style="flex: 1; min-width: 100px;">
+                            <i class="fas fa-heart"></i> Like
+                        </button>
+                        <button onclick="startChatWithUser('${userId}')" class="btn-primary" style="flex: 1; min-width: 140px;">
                             <i class="fas fa-comment"></i> Messaggio
                         </button>
                     `}
                 </div>
                 
+                <!-- Galleria Foto -->
+                ${user.photos && user.photos.length > 1 ? `
+                <div style="padding: 15px; border-bottom: 1px solid var(--border);">
+                    <h3 style="margin-bottom: 15px; display: flex; align-items: center; gap: 8px; font-size: 1em;">
+                        <i class="fas fa-camera"></i> Foto (${user.photos.length})
+                    </h3>
+                    <div style="display: flex; gap: 8px; overflow-x: auto; padding-bottom: 10px;">
+                        ${user.photos.map((photo, idx) => `
+                            <img src="${photo}" alt="Foto ${idx + 1}" 
+                                 style="width: 80px; height: 80px; border-radius: 10px; object-fit: cover; cursor: pointer; flex-shrink: 0;"
+                                 onclick="viewFullPhoto('${photo}')">
+                        `).join('')}
+                    </div>
+                </div>
+                ` : ''}
+                
                 <!-- Griglia Post -->
                 <div style="padding: 15px;">
-                    <h3 style="margin-bottom: 15px; display: flex; align-items: center; gap: 8px;">
+                    <h3 style="margin-bottom: 15px; display: flex; align-items: center; gap: 8px; font-size: 1em;">
                         <i class="fas fa-images"></i> Post
                     </h3>
                     <div id="userPostsGrid" class="posts-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px;">
@@ -4998,6 +5064,68 @@ function closeUserProfileModal() {
     const modal = document.getElementById('userProfileModal');
     if (modal) modal.style.display = 'none';
     currentViewingUserId = null;
+}
+
+// Apri upload foto profilo
+function openPhotoUpload() {
+    closeUserProfileModal();
+    setTimeout(() => openProfileSettings(), 100);
+    showToast('📸 Vai su "Cambia Foto" per aggiungere una foto', 'info');
+}
+
+// Visualizza foto a schermo intero
+function viewFullPhoto(photoUrl) {
+    let overlay = document.getElementById('fullPhotoOverlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'fullPhotoOverlay';
+        overlay.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: flex; align-items: center; justify-content: center; z-index: 10001; cursor: pointer;';
+        overlay.onclick = () => overlay.remove();
+        document.body.appendChild(overlay);
+    }
+    overlay.innerHTML = `
+        <img src="${photoUrl}" style="max-width: 90%; max-height: 90%; object-fit: contain; border-radius: 10px;">
+        <button style="position: absolute; top: 20px; right: 20px; background: rgba(255,255,255,0.2); border: none; color: white; font-size: 24px; width: 50px; height: 50px; border-radius: 50%; cursor: pointer;">&times;</button>
+    `;
+}
+
+// Like utente dal profilo
+async function likeUserFromProfile(userId) {
+    const currentUser = FlameAuth.currentUser;
+    if (!currentUser) {
+        showToast('❌ Devi essere loggato', 'error');
+        return;
+    }
+    
+    try {
+        // Registra il like
+        await firebase.firestore().collection('likes').add({
+            fromUserId: currentUser.uid,
+            toUserId: userId,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        // Incrementa likes ricevuti
+        await firebase.firestore().collection('users').doc(userId).update({
+            likesReceived: firebase.firestore.FieldValue.increment(1)
+        });
+        
+        showToast('❤️ Like inviato!', 'success');
+        
+        // Controlla se c'è match
+        const reverseCheck = await firebase.firestore().collection('likes')
+            .where('fromUserId', '==', userId)
+            .where('toUserId', '==', currentUser.uid)
+            .get();
+        
+        if (!reverseCheck.empty) {
+            showToast('🔥 È un MATCH!', 'success');
+        }
+        
+    } catch (error) {
+        console.error('Errore like:', error);
+        showToast('❌ Errore invio like', 'error');
+    }
 }
 
 // Carica post utente
@@ -5698,6 +5826,9 @@ console.log('📸 Social Post System loaded');
 // Export global functions for HTML onclick handlers
 window.openMyProfile = openMyProfile;
 window.openUserProfile = openUserProfile;
+window.openPhotoUpload = openPhotoUpload;
+window.viewFullPhoto = viewFullPhoto;
+window.likeUserFromProfile = likeUserFromProfile;
 
 // Wrapper per il pulsante "Vedi Post" - risolve problema di timing
 window.viewUserPosts = function(userId) {
