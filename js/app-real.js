@@ -1986,7 +1986,7 @@ function showProfileDetails(profile) {
     }
     
     actionsDiv.innerHTML = `
-        <button class="action-btn profile-btn" onclick="closeProfileModal(); openUserProfile('${profile.id}')" style="background: var(--primary); color: white;">
+        <button class="action-btn profile-btn" onclick="viewUserPosts('${profile.id}')" style="background: var(--primary); color: white;">
             <i class="fas fa-images"></i> Vedi Post
         </button>
         <button class="action-btn report-btn" onclick="reportUser('${profile.id}', '${profile.name}')">
@@ -5698,6 +5698,13 @@ console.log('📸 Social Post System loaded');
 // Export global functions for HTML onclick handlers
 window.openMyProfile = openMyProfile;
 window.openUserProfile = openUserProfile;
+
+// Wrapper per il pulsante "Vedi Post" - risolve problema di timing
+window.viewUserPosts = function(userId) {
+    closeProfileModal();
+    setTimeout(() => openUserProfile(userId), 150);
+};
+
 window.openCreatePostModal = openCreatePostModal;
 window.closeCreatePostModal = closeCreatePostModal;
 window.publishPost = publishPost;
