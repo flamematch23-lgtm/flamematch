@@ -5722,3 +5722,11 @@ window.closeProfileModal = closeProfileModal;
 window.handlePostFileSelect = handlePostFileSelect;
 window.clearPostPreview = clearPostPreview;
 window.openPostDetail = openPostDetail;
+
+// Export funzioni Esplora
+window.openExploreModal = openExploreModal;
+window.closeExploreModal = closeExploreModal;
+window.exploreNearby = exploreNearby;
+window.exploreNew = exploreNew;
+window.explorePopular = explorePopular;
+window.exploreOnline = exploreOnline;
