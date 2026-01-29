@@ -3299,7 +3299,7 @@ async function handlePhotoUpload(event) {
         // Upload to Cloudinary
         const formData = new FormData();
         formData.append('file', file);
-        formData.append('upload_preset', 'flamematch');
+        formData.append('upload_preset', 'ml_default');
         formData.append('folder', `flamematch/users/${user.uid}`);
         
         const response = await fetch('https://api.cloudinary.com/v1_1/dnxqpp2en/image/upload', {
@@ -3978,7 +3978,7 @@ async function uploadVerificationPhoto(photoData) {
         
         const formData = new FormData();
         formData.append('file', blob, 'verification.jpg');
-        formData.append('upload_preset', 'flamematch');
+        formData.append('upload_preset', 'ml_default');
         formData.append('folder', 'verifications');
         
         const uploadResponse = await fetch('https://api.cloudinary.com/v1_1/dnxqpp2en/image/upload', {
@@ -5436,7 +5436,7 @@ async function publishPost() {
         // Upload a Cloudinary
         const formData = new FormData();
         formData.append('file', selectedPostFile);
-        formData.append('upload_preset', 'flamematch');
+        formData.append('upload_preset', 'ml_default');
         
         const isVideo = selectedPostFile.type.startsWith('video/');
         const resourceType = isVideo ? 'video' : 'image';
