@@ -3,6 +3,13 @@
    NO DEMO - Solo utenti reali da Firebase
    ========================================== */
 
+// Default placeholder images (URL-encoded SVG)
+const DEFAULT_AVATAR_200 = "data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27200%27 height=%27200%27%3E%3Crect fill=%27%23667%27 width=%27200%27 height=%27200%27/%3E%3Ctext fill=%27%23fff%27 font-size=%2780%27 x=%2750%25%27 y=%2755%25%27 text-anchor=%27middle%27%3E?%3C/text%3E%3C/svg%3E";
+const DEFAULT_AVATAR_50 = "data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2750%27 height=%2750%27%3E%3Crect fill=%27%23667%27 width=%2750%27 height=%2750%27/%3E%3Ctext fill=%27%23fff%27 font-size=%2720%27 x=%2750%25%27 y=%2755%25%27 text-anchor=%27middle%27%3E?%3C/text%3E%3C/svg%3E";
+const DEFAULT_AVATAR_60 = "data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2760%27 height=%2760%27%3E%3Crect fill=%27%23667%27 width=%2760%27 height=%2760%27/%3E%3Ctext fill=%27%23fff%27 font-size=%2724%27 x=%2750%25%27 y=%2755%25%27 text-anchor=%27middle%27%3E?%3C/text%3E%3C/svg%3E";
+const DEFAULT_AVATAR_40 = "data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2740%27 height=%2740%27%3E%3Crect fill=%27%23667%27 width=%2740%27 height=%2740%27/%3E%3Ctext fill=%27%23fff%27 font-size=%2716%27 x=%2750%25%27 y=%2755%25%27 text-anchor=%27middle%27%3E?%3C/text%3E%3C/svg%3E";
+const DEFAULT_AVATAR_120 = "data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27120%27 height=%27120%27%3E%3Crect fill=%27%23667%27 width=%27120%27 height=%27120%27/%3E%3Ctext fill=%27%23fff%27 font-size=%2748%27 x=%2750%25%27 y=%2755%25%27 text-anchor=%27middle%27%3E?%3C/text%3E%3C/svg%3E";
+
 // State
 let currentUser = null;
 let currentUserProfile = null;
@@ -1134,7 +1141,7 @@ function showLikesModal(likes) {
                             transition: transform 0.2s;
                         " onclick="likeBackUser('${user.id}')" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
                             <div style="position: relative;">
-                                <img src="${user.photos?.[0] || 'data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Crect fill='%23667' width='200' height='200'/%3E%3Ctext fill='%23fff' font-size='80' x='50%25' y='55%25' text-anchor='middle'%3E?%3C/text%3E%3C/svg%3E'}" 
+                                <img src="${user.photos?.[0] || DEFAULT_AVATAR_200}" 
                                     style="width: 100%; height: 150px; object-fit: cover;">
                                 <div style="position: absolute; bottom: 0; left: 0; right: 0; padding: 12px; background: linear-gradient(transparent, rgba(0,0,0,0.8));">
                                     <div style="font-weight: bold;">${user.name}, ${user.age || '?'}</div>
@@ -1429,7 +1436,7 @@ function showVisitorsModal(visitors) {
                             border-radius: 12px;
                             cursor: pointer;
                         " onclick="viewVisitorProfile('${user.id}')">
-                            <img src="${user.photos?.[0] || 'data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='50' height='50'%3E%3Crect fill='%23667' width='50' height='50'/%3E%3Ctext fill='%23fff' font-size='20' x='50%25' y='55%25' text-anchor='middle'%3E?%3C/text%3E%3C/svg%3E'}" 
+                            <img src="${user.photos?.[0] || DEFAULT_AVATAR_50}" 
                                 style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">
                             <div style="flex: 1;">
                                 <div style="font-weight: bold;">${user.name}, ${user.age || '?'}</div>
@@ -1553,7 +1560,7 @@ function updateMatchesPanel(matches) {
             newMatchesContainer.innerHTML = matches.slice(0, 8).map(match => `
                 <div class="new-match-item" onclick="openChat('${match.user.id}', '${match.matchId}')">
                     <div class="new-match-avatar">
-                        <img src="${match.user.photos?.[0] || 'data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60'%3E%3Crect fill='%23667' width='60' height='60'/%3E%3Ctext fill='%23fff' font-size='24' x='50%25' y='55%25' text-anchor='middle'%3E?%3C/text%3E%3C/svg%3E'}" alt="${match.user.name}">
+                        <img src="${match.user.photos?.[0] || DEFAULT_AVATAR_60}" alt="${match.user.name}">
                     </div>
                     <span>${match.user.name?.split(' ')[0] || 'Match'}</span>
                 </div>
@@ -1575,7 +1582,7 @@ function updateMatchesPanel(matches) {
         } else {
             chatsContainer.innerHTML = matchesWithMessages.map(match => `
                 <div class="chat-item" onclick="openChat('${match.user.id}', '${match.matchId}')">
-                    <img src="${match.user.photos?.[0] || 'data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='50' height='50'%3E%3Crect fill='%23667' width='50' height='50'/%3E%3Ctext fill='%23fff' font-size='20' x='50%25' y='55%25' text-anchor='middle'%3E?%3C/text%3E%3C/svg%3E'}" alt="${match.user.name}" class="chat-avatar">
+                    <img src="${match.user.photos?.[0] || DEFAULT_AVATAR_50}" alt="${match.user.name}" class="chat-avatar">
                     <div class="chat-info">
                         <div class="chat-name">
                             ${match.user.name?.split(' ')[0] || 'Match'}
@@ -1642,7 +1649,7 @@ function renderCards() {
         }
         
         // Foto profilo (usa la prima disponibile o placeholder)
-        const photoUrl = profile.photos?.[0] || 'data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Crect fill='%23667' width='40' height='40'/%3E%3Ctext fill='%23fff' font-size='16' x='50%25' y='55%25' text-anchor='middle'%3E?%3C/text%3E%3C/svg%3E0x550?text=Nessuna+Foto';
+        const photoUrl = profile.photos?.[0] || DEFAULT_AVATAR_40;
         
         // Calcola età se c'è birthday
         let age = profile.age || '';
@@ -1656,7 +1663,7 @@ function renderCards() {
         const tags = profile.interests || profile.tags || [];
         
         card.innerHTML = `
-            <img src="${photoUrl}" alt="${profile.name}" draggable="false" onerror="this.src='data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Crect fill='%23667' width='40' height='40'/%3E%3Ctext fill='%23fff' font-size='16' x='50%25' y='55%25' text-anchor='middle'%3E?%3C/text%3E%3C/svg%3E0x550?text=Foto+Non+Disponibile'">
+            <img src="${photoUrl}" alt="${profile.name}" draggable="false" onerror="this.src=DEFAULT_AVATAR_40">
             <div class="card-gradient"></div>
             <div class="card-info">
                 <h2 class="card-name">
@@ -1926,7 +1933,7 @@ function showMatch(profile) {
     // Foto match
     const matchImg = document.getElementById('matchImg');
     if (matchImg) {
-        matchImg.src = profile.photos?.[0] || 'data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Crect fill='%23667' width='120' height='120'/%3E%3Ctext fill='%23fff' font-size='48' x='50%25' y='55%25' text-anchor='middle'%3E?%3C/text%3E%3C/svg%3E';
+        matchImg.src = profile.photos?.[0] || DEFAULT_AVATAR_120;
     }
     
     // Nome match
@@ -1938,7 +1945,7 @@ function showMatch(profile) {
     // Foto utente corrente
     const myMatchImg = document.getElementById('myMatchImg');
     if (myMatchImg) {
-        myMatchImg.src = currentUserProfile?.photos?.[0] || currentUser?.photoURL || 'data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Crect fill='%23667' width='120' height='120'/%3E%3Ctext fill='%23fff' font-size='48' x='50%25' y='55%25' text-anchor='middle'%3E?%3C/text%3E%3C/svg%3E?text=Tu';
+        myMatchImg.src = currentUserProfile?.photos?.[0] || currentUser?.photoURL || DEFAULT_AVATAR_120;
     }
     
     document.getElementById('matchOverlay').classList.add('active');
@@ -1959,7 +1966,7 @@ let currentViewedProfile = null;
 function showProfileDetails(profile) {
     currentViewedProfile = profile;
     
-    document.getElementById('profileModalImg').src = profile.photos?.[0] || 'data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Crect fill='%23667' width='40' height='40'/%3E%3Ctext fill='%23fff' font-size='16' x='50%25' y='55%25' text-anchor='middle'%3E?%3C/text%3E%3C/svg%3E0';
+    document.getElementById('profileModalImg').src = profile.photos?.[0] || DEFAULT_AVATAR_40;
     
     let age = profile.age || '';
     if (profile.birthday) {
@@ -2035,7 +2042,7 @@ async function showProfileModal() {
         const modal = document.getElementById('profileModal');
         
         // Popola immagine
-        document.getElementById('profileModalImg').src = profile.photos?.[0] || 'data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Crect fill='%23667' width='40' height='40'/%3E%3Ctext fill='%23fff' font-size='16' x='50%25' y='55%25' text-anchor='middle'%3E?%3C/text%3E%3C/svg%3E0x500?text=No+Photo';
+        document.getElementById('profileModalImg').src = profile.photos?.[0] || DEFAULT_AVATAR_40;
         
         // Popola nome, età e verifica
         const age = profile.birthDate ? calculateAge(profile.birthDate) : '';
@@ -2120,7 +2127,7 @@ async function openChat(userId, matchId) {
     currentChatUserId = userId; // Salva ID per showProfileModal
     
     // Aggiorna header chat
-    document.getElementById('chatAvatar').src = userProfile.photos?.[0] || 'data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='50' height='50'%3E%3Crect fill='%23667' width='50' height='50'/%3E%3Ctext fill='%23fff' font-size='20' x='50%25' y='55%25' text-anchor='middle'%3E?%3C/text%3E%3C/svg%3E';
+    document.getElementById('chatAvatar').src = userProfile.photos?.[0] || DEFAULT_AVATAR_50;
     document.getElementById('chatUserName').textContent = userProfile.name?.split(' ')[0] || 'Match';
     
     // Carica messaggi esistenti
@@ -5435,7 +5442,7 @@ async function openPostDetail(postId, postData) {
                 <div style="width: 350px; display: flex; flex-direction: column; border-left: 1px solid var(--border);" class="post-sidebar">
                     <!-- Header -->
                     <div style="padding: 15px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px;">
-                        <img src="${author.photos?.[0] || 'data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Crect fill='%23667' width='40' height='40'/%3E%3Ctext fill='%23fff' font-size='16' x='50%25' y='55%25' text-anchor='middle'%3E?%3C/text%3E%3C/svg%3E'}" 
+                        <img src="${author.photos?.[0] || DEFAULT_AVATAR_40}" 
                              style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; cursor: pointer;"
                              onclick="closePostDetailModal(); openUserProfile('${postData.userId}')">
                         <div style="flex: 1;">
@@ -5565,7 +5572,7 @@ async function loadPostComments(postId) {
             
             // Carica dati autore commento
             let authorName = 'Utente';
-            let authorPhoto = 'data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='30'%3E%3Crect fill='%23667' width='30' height='30'/%3E%3Ctext fill='%23fff' font-size='12' x='50%25' y='55%25' text-anchor='middle'%3E?%3C/text%3E%3C/svg%3E';
+            let authorPhoto = DEFAULT_AVATAR_40;
             let authorVerified = false;
             
             try {
