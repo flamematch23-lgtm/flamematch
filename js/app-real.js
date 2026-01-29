@@ -2590,10 +2590,18 @@ function showEsplora(e) {
             </div>
             <div class="modal-body">
                 <div class="explore-options">
-                    <div class="explore-card" onclick="exploreNearby()">
-                        <i class="fas fa-map-marker-alt"></i>
+                    <div class="explore-card nearby-special" onclick="exploreNearby()">
+                        <div class="nearby-gps-badge">📍 LIVE</div>
+                        <div class="nearby-icon-wrapper">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <div class="nearby-pulse"></div>
+                        </div>
                         <h3>Vicino a te</h3>
                         <p>Scopri chi è nella tua zona</p>
+                        <div class="nearby-distance-indicator">
+                            <span class="distance-dot"></span>
+                            <span>Entro 50km</span>
+                        </div>
                     </div>
                     <div class="explore-card" onclick="exploreNew()">
                         <i class="fas fa-user-plus"></i>
@@ -2633,9 +2641,47 @@ async function exploreNearby() {
     showToast('📍 Cercando profili vicini...');
     
     const user = FlameAuth.currentUser;
-    if (!user || !currentUserProfile?.location) {
-        showToast('⚠️ Attiva la geolocalizzazione per questa funzione');
+    if (!user) {
+        showToast('❌ Devi accedere per usare questa funzione');
         return;
+    }
+    
+    // Verifica se abbiamo già la posizione o chiediamo al browser
+    let userLocation = currentUserProfile?.location;
+    
+    if (!userLocation) {
+        // Chiedi geolocalizzazione al browser
+        showToast('📍 Richiedo la tua posizione...');
+        
+        try {
+            userLocation = await requestGeolocation();
+            
+            // Salva la posizione nel profilo utente su Firebase
+            await firebase.firestore().collection('users').doc(user.uid).update({
+                location: userLocation,
+                lastLocationUpdate: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            
+            // Aggiorna profilo locale
+            if (currentUserProfile) {
+                currentUserProfile.location = userLocation;
+            }
+            
+            showToast('✅ Posizione aggiornata!');
+            
+        } catch (e) {
+            console.error('Errore geolocalizzazione:', e);
+            if (e.code === 1) {
+                showToast('❌ Permesso geolocalizzazione negato. Attivalo nelle impostazioni del browser.');
+            } else if (e.code === 2) {
+                showToast('❌ Impossibile ottenere la posizione. Riprova.');
+            } else if (e.code === 3) {
+                showToast('❌ Timeout geolocalizzazione. Riprova.');
+            } else {
+                showToast('❌ Errore geolocalizzazione: ' + e.message);
+            }
+            return;
+        }
     }
     
     try {
@@ -2662,13 +2708,13 @@ async function exploreNearby() {
             if (!data.location || data.isPaused) return;
             
             const dist = calculateDistance(
-                currentUserProfile.location.latitude,
-                currentUserProfile.location.longitude,
+                userLocation.latitude,
+                userLocation.longitude,
                 data.location.latitude,
                 data.location.longitude
             );
             
-            if (dist <= 10) { // Solo entro 10km
+            if (dist <= 50) { // Entro 50km per avere più risultati
                 profiles.push({ id: doc.id, ...data, distance: dist });
             }
         });
@@ -2677,19 +2723,46 @@ async function exploreNearby() {
         profiles.sort((a, b) => a.distance - b.distance);
         
         if (profiles.length === 0) {
-            showToast('😔 Nessun profilo trovato nelle vicinanze');
+            showToast('😔 Nessun profilo trovato nelle vicinanze (50km)');
             return;
         }
         
         profilesToShow = profiles;
         currentProfileIndex = 0;
         showCurrentProfile();
-        showToast(`✅ ${profiles.length} profili trovati entro 10km!`);
+        showToast(`✅ ${profiles.length} profili trovati nelle vicinanze!`);
         
     } catch (e) {
         console.error('Errore explore nearby:', e);
         showToast('❌ Errore nella ricerca');
     }
+}
+
+// Funzione helper per richiedere geolocalizzazione
+function requestGeolocation() {
+    return new Promise((resolve, reject) => {
+        if (!navigator.geolocation) {
+            reject(new Error('Geolocalizzazione non supportata dal browser'));
+            return;
+        }
+        
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                resolve({
+                    latitude: position.coords.latitude,
+                    longitude: position.coords.longitude
+                });
+            },
+            (error) => {
+                reject(error);
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 15000,
+                maximumAge: 300000 // 5 minuti cache
+            }
+        );
+    });
 }
 
 async function exploreNew() {
@@ -5884,6 +5957,7 @@ window.openPostDetail = openPostDetail;
 window.openExploreModal = openExploreModal;
 window.closeExploreModal = closeExploreModal;
 window.exploreNearby = exploreNearby;
+window.requestGeolocation = requestGeolocation;
 window.exploreNew = exploreNew;
 window.explorePopular = explorePopular;
 window.exploreOnline = exploreOnline;
