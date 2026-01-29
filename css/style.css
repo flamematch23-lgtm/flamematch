@@ -1994,6 +1994,84 @@ img {
     color: var(--primary);
 }
 
+/* User Profile Modal Overlay */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.85);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.modal-overlay .modal-content {
+    background: var(--gray-dark);
+    border-radius: var(--radius-lg);
+    max-width: 500px;
+    width: 100%;
+    position: relative;
+    animation: modalSlideIn 0.3s ease;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.modal-overlay .user-profile-modal {
+    max-width: 450px;
+    overflow: hidden;
+}
+
+.modal-overlay .modal-close {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    background: rgba(0, 0, 0, 0.5);
+    border: none;
+    color: white;
+    font-size: 1.8rem;
+    cursor: pointer;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition);
+    z-index: 100;
+}
+
+.modal-overlay .modal-close:hover {
+    background: var(--primary);
+    transform: scale(1.1);
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-30px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Mobile responsive for profile modal */
+@media (max-width: 576px) {
+    .modal-overlay {
+        padding: 10px;
+    }
+    
+    .modal-overlay .modal-content {
+        max-width: 100%;
+        border-radius: var(--radius-md);
+    }
+}
+
 .modal-header {
     text-align: center;
     margin-bottom: 2rem;
