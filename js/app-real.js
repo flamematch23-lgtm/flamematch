@@ -6772,7 +6772,7 @@ async function saveLocationToProfile(locationName, lat, lng) {
 
 // Export location functions to window
 window.setMyLocation = setMyLocation;
-window.showManualLocationInput = showManualLocationInput;
+window.setLocationManually = setLocationManually;
 window.saveManualLocation = saveManualLocation;
 
 // ================================================================
