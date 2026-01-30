@@ -4928,7 +4928,7 @@ function showBoostModal() {
                 </button>
             </div>
             
-            <button class="boost-free" onclick="activateFreeBoost()">
+            <div id="availableBoostsSection" style="margin:15px 0;padding:15px;background:rgba(255,107,107,0.1);border-radius:10px;display:none;"><p style="color:#fff;margin:0 0 10px 0;">🚀 Boost disponibili: <span id="availableBoostsCount" style="color:#ff6b6b;font-weight:bold;">0</span></p><button class="boost-use-btn" onclick="usePurchasedBoost()" style="background:linear-gradient(135deg,#ff6b6b,#ff8e53);border:none;padding:12px 25px;border-radius:10px;color:#fff;font-weight:bold;cursor:pointer;">Usa 1 Boost Ora!</button></div><button class="boost-free" onclick="activateFreeBoost()">
                 <i class="fas fa-gift"></i> Prova 1 Boost Gratis!
             </button>
             <p class="boost-note">Offerta limitata per i nuovi utenti</p>
@@ -4973,9 +4973,9 @@ async function activateFreeBoost() {
     }
 }
 
-async function activateBoost(count) {
+async function activateBoostOLD(count) {
     // In produzione qui ci sarebbe l'integrazione con pagamento
-    showToast('💳 Integrazione pagamenti - Coming soon!');
+    // OLD
 }
 
 function updateBoostUI() {
@@ -8309,4 +8309,296 @@ auth.onAuthStateChanged(user => {
         setTimeout(() => WalletSystem.init(), 2000);
     }
 });
+
+
+// ============================================
+// 🚀 BOOST SYSTEM - PAYPAL INTEGRATION
+// ============================================
+
+const BoostPrices = {
+    1: { price: 4.99, description: '1 Boost (30 minuti)' },
+    5: { price: 14.99, description: '5 Boost (Risparmi 50%)' },
+    10: { price: 24.99, description: '10 Boost (Risparmi 60%)' }
+};
+
+async function activateBoost(count) {
+    const user = FlameAuth.currentUser;
+    if (!user) {
+        showToast('⚠️ Devi essere loggato', 'error');
+        return;
+    }
+    
+    const boostInfo = BoostPrices[count];
+    if (!boostInfo) return;
+    
+    // Close boost modal and show PayPal modal
+    closeBoostModal();
+    showBoostPayPalModal(count, boostInfo);
+}
+
+function showBoostPayPalModal(count, boostInfo) {
+    // Remove any existing modal
+    document.querySelectorAll('.fm-boost-pay-modal').forEach(m => m.remove());
+    
+    const modal = document.createElement('div');
+    modal.className = 'fm-boost-pay-modal';
+    modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.9);display:flex;justify-content:center;align-items:center;z-index:99999;';
+    
+    modal.innerHTML = `
+        <div style="background:linear-gradient(145deg,#1a1a2e,#16213e);border-radius:20px;padding:30px;max-width:400px;width:95%;text-align:center;border:2px solid rgba(255,107,107,0.3);">
+            <button onclick="this.closest('.fm-boost-pay-modal').remove()" style="position:absolute;top:15px;right:15px;background:rgba(255,255,255,0.1);border:none;width:35px;height:35px;border-radius:50%;color:#fff;cursor:pointer;font-size:20px;">×</button>
+            
+            <div style="font-size:64px;margin-bottom:15px;">🚀</div>
+            <h2 style="color:#fff;margin:0 0 10px 0;">Acquista ${count} Boost</h2>
+            <p style="color:rgba(255,255,255,0.6);margin:0 0 5px 0;">${boostInfo.description}</p>
+            <p style="color:#ff6b6b;font-size:28px;font-weight:bold;margin:15px 0;">€${boostInfo.price.toFixed(2)}</p>
+            
+            <div style="background:rgba(255,255,255,0.05);border-radius:10px;padding:15px;margin:20px 0;">
+                <p style="color:rgba(255,255,255,0.7);margin:0;font-size:14px;">
+                    ✅ Profilo in cima per 30 minuti per boost<br>
+                    ✅ 10x più visualizzazioni<br>
+                    ✅ 3x più match
+                </p>
+            </div>
+            
+            <div id="paypal-boost-container" style="margin:20px 0;min-height:50px;"></div>
+            
+            <p style="color:rgba(255,255,255,0.4);font-size:12px;margin-top:15px;">
+                🔒 Pagamento sicuro con PayPal
+            </p>
+        </div>
+    `;
+    
+    modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+    document.body.appendChild(modal);
+    
+    // Render PayPal button
+    renderBoostPayPalButton(count, boostInfo);
+}
+
+function renderBoostPayPalButton(count, boostInfo) {
+    const container = document.getElementById('paypal-boost-container');
+    if (!container || !window.paypal) {
+        console.error('PayPal not loaded');
+        container.innerHTML = '<p style="color:#ff6b6b;">Errore caricamento PayPal. Ricarica la pagina.</p>';
+        return;
+    }
+    
+    paypal.Buttons({
+        style: {
+            layout: 'vertical',
+            color: 'gold',
+            shape: 'pill',
+            label: 'pay',
+            height: 45
+        },
+        createOrder: function(data, actions) {
+            return actions.order.create({
+                purchase_units: [{
+                    description: 'FlameMatch ' + boostInfo.description,
+                    amount: {
+                        value: boostInfo.price.toFixed(2),
+                        currency_code: 'EUR'
+                    }
+                }]
+            });
+        },
+        onApprove: async function(data, actions) {
+            return actions.order.capture().then(async function(details) {
+                console.log('Boost payment success:', details);
+                
+                // Add boosts to user account
+                await addBoostsToAccount(count);
+                
+                // Close modal
+                document.querySelector('.fm-boost-pay-modal')?.remove();
+                
+                showToast('🎉 Acquistati ' + count + ' Boost! Attiva quando vuoi.', 'success');
+            });
+        },
+        onError: function(err) {
+            console.error('PayPal error:', err);
+            showToast('❌ Errore pagamento PayPal', 'error');
+        },
+        onCancel: function() {
+            showToast('Pagamento annullato', 'info');
+        }
+    }).render('#paypal-boost-container');
+}
+
+async function addBoostsToAccount(count) {
+    const user = FlameAuth.currentUser;
+    if (!user) return;
+    
+    try {
+        const userRef = firebase.firestore().collection('users').doc(user.uid);
+        const doc = await userRef.get();
+        const currentBoosts = doc.exists ? (doc.data().availableBoosts || 0) : 0;
+        
+        await userRef.update({
+            availableBoosts: currentBoosts + count,
+            lastBoostPurchase: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        // Save transaction
+        await firebase.firestore().collection('transactions').add({
+            userId: user.uid,
+            type: 'boost_purchase',
+            boostCount: count,
+            price: BoostPrices[count].price,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        console.log('Added', count, 'boosts to account');
+    } catch (e) {
+        console.error('Error adding boosts:', e);
+    }
+}
+
+// Use a purchased boost
+async function usePurchasedBoost() {
+    const user = FlameAuth.currentUser;
+    if (!user) return;
+    
+    if (boostActive) {
+        showToast('🚀 Hai già un Boost attivo!', 'error');
+        return;
+    }
+    
+    try {
+        const userRef = firebase.firestore().collection('users').doc(user.uid);
+        const doc = await userRef.get();
+        const availableBoosts = doc.exists ? (doc.data().availableBoosts || 0) : 0;
+        
+        if (availableBoosts <= 0) {
+            showToast('⚠️ Non hai Boost disponibili. Acquistane altri!', 'error');
+            showBoostModal();
+            return;
+        }
+        
+        const endTime = new Date(Date.now() + 30 * 60 * 1000); // 30 minuti
+        
+        await userRef.update({
+            availableBoosts: availableBoosts - 1,
+            boostEndTime: endTime,
+            boostStartTime: firebase.firestore.FieldValue.serverTimestamp(),
+            isBoosted: true
+        });
+        
+        boostActive = true;
+        boostEndTime = endTime;
+        
+        closeBoostModal();
+        showToast('🚀 Boost attivato! Sei in cima per 30 minuti!');
+        updateBoostUI();
+        startBoostTimer();
+        
+    } catch (e) {
+        console.error('Error using boost:', e);
+        showToast('❌ Errore', 'error');
+    }
+}
+
+// ============================================
+// 🔝 BOOSTED PROFILES FIRST IN DISCOVER
+// ============================================
+
+// Override the loadProfiles function to show boosted users first
+const originalLoadProfiles = typeof loadProfiles === 'function' ? loadProfiles : null;
+
+async function loadProfilesWithBoost() {
+    const user = FlameAuth.currentUser;
+    if (!user) return [];
+    
+    try {
+        // Get current user data for location
+        const currentUserDoc = await firebase.firestore().collection('users').doc(user.uid).get();
+        const currentUserData = currentUserDoc.data();
+        
+        // First, get BOOSTED profiles
+        const boostedSnapshot = await firebase.firestore()
+            .collection('users')
+            .where('isBoosted', '==', true)
+            .get();
+        
+        const boostedProfiles = [];
+        const now = new Date();
+        
+        boostedSnapshot.forEach(doc => {
+            if (doc.id !== user.uid) {
+                const data = doc.data();
+                // Check if boost is still active
+                if (data.boostEndTime && data.boostEndTime.toDate() > now) {
+                    boostedProfiles.push({ id: doc.id, ...data, isBoosted: true });
+                }
+            }
+        });
+        
+        // Then get regular profiles
+        let regularProfiles = [];
+        if (originalLoadProfiles) {
+            regularProfiles = await originalLoadProfiles();
+        } else {
+            // Fallback: load profiles normally
+            const regularSnapshot = await firebase.firestore()
+                .collection('users')
+                .where('profileComplete', '==', true)
+                .limit(50)
+                .get();
+            
+            regularSnapshot.forEach(doc => {
+                if (doc.id !== user.uid && !boostedProfiles.find(p => p.id === doc.id)) {
+                    regularProfiles.push({ id: doc.id, ...doc.data() });
+                }
+            });
+        }
+        
+        // Remove duplicates (boosted profiles from regular list)
+        const boostedIds = boostedProfiles.map(p => p.id);
+        regularProfiles = regularProfiles.filter(p => !boostedIds.includes(p.id));
+        
+        // Combine: BOOSTED FIRST, then regular
+        console.log('🚀 Boosted profiles:', boostedProfiles.length, '| Regular:', regularProfiles.length);
+        return [...boostedProfiles, ...regularProfiles];
+        
+    } catch (e) {
+        console.error('Error loading profiles with boost:', e);
+        return originalLoadProfiles ? originalLoadProfiles() : [];
+    }
+}
+
+console.log('🚀 Boost system with PayPal loaded!');
+
+
+// Check and show available boosts in modal
+async function checkAvailableBoosts() {
+    const user = FlameAuth.currentUser;
+    if (!user) return;
+    
+    try {
+        const doc = await firebase.firestore().collection('users').doc(user.uid).get();
+        const availableBoosts = doc.exists ? (doc.data().availableBoosts || 0) : 0;
+        
+        const section = document.getElementById('availableBoostsSection');
+        const countEl = document.getElementById('availableBoostsCount');
+        
+        if (section && countEl) {
+            if (availableBoosts > 0) {
+                section.style.display = 'block';
+                countEl.textContent = availableBoosts;
+            } else {
+                section.style.display = 'none';
+            }
+        }
+    } catch (e) {
+        console.error('Error checking boosts:', e);
+    }
+}
+
+// Override showBoostModal to check available boosts
+const originalShowBoostModal = showBoostModal;
+showBoostModal = function() {
+    originalShowBoostModal();
+    setTimeout(checkAvailableBoosts, 100);
+};
 
