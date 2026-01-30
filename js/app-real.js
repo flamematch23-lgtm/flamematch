@@ -7770,3 +7770,563 @@ setTimeout(() => {
     }
 }, 3000);
 
+
+// ================================================================
+// 💰 WALLET SYSTEM - FLAMECOINS
+// ================================================================
+
+const WalletSystem = {
+    balance: 0,
+    transactions: [],
+    
+    coinPackages: [
+        { id: 'coins_100', coins: 100, price: 4.99, popular: false, bonus: 0 },
+        { id: 'coins_300', coins: 300, price: 9.99, popular: true, bonus: 50 },
+        { id: 'coins_500', coins: 500, price: 14.99, popular: false, bonus: 100 },
+        { id: 'coins_1000', coins: 1000, price: 24.99, popular: false, bonus: 250 },
+        { id: 'coins_2500', coins: 2500, price: 49.99, popular: false, bonus: 750 }
+    ],
+    
+    async init() {
+        if (!currentUser) return;
+        await this.loadWallet();
+        this.updateUI();
+    },
+    
+    async loadWallet() {
+        try {
+            const doc = await db.collection('wallets').doc(currentUser.id).get();
+            if (doc.exists) {
+                const data = doc.data();
+                this.balance = data.balance || 0;
+                this.transactions = data.transactions || [];
+            } else {
+                // Create wallet for new user with 50 free coins
+                await this.createWallet();
+            }
+        } catch (error) {
+            console.error('Error loading wallet:', error);
+        }
+    },
+    
+    async createWallet() {
+        const walletData = {
+            balance: 50, // Free starter coins
+            transactions: [{
+                type: 'bonus',
+                amount: 50,
+                description: 'Bonus di benvenuto! 🎉',
+                timestamp: new Date()
+            }],
+            createdAt: new Date()
+        };
+        
+        await db.collection('wallets').doc(currentUser.id).set(walletData);
+        this.balance = 50;
+        this.transactions = walletData.transactions;
+    },
+    
+    async addCoins(amount, description = 'Acquisto FlameCoins') {
+        this.balance += amount;
+        const transaction = {
+            type: 'credit',
+            amount: amount,
+            description: description,
+            timestamp: new Date()
+        };
+        this.transactions.unshift(transaction);
+        
+        await db.collection('wallets').doc(currentUser.id).update({
+            balance: this.balance,
+            transactions: firebase.firestore.FieldValue.arrayUnion(transaction)
+        });
+        
+        this.updateUI();
+        showNotification(`+${amount} FlameCoins aggiunti! 🔥`, 'success');
+    },
+    
+    async spendCoins(amount, description = 'Spesa FlameCoins') {
+        if (this.balance < amount) {
+            showNotification('FlameCoins insufficienti! Acquista altri coins.', 'error');
+            this.showBuyModal();
+            return false;
+        }
+        
+        this.balance -= amount;
+        const transaction = {
+            type: 'debit',
+            amount: -amount,
+            description: description,
+            timestamp: new Date()
+        };
+        this.transactions.unshift(transaction);
+        
+        await db.collection('wallets').doc(currentUser.id).update({
+            balance: this.balance,
+            transactions: firebase.firestore.FieldValue.arrayUnion(transaction)
+        });
+        
+        this.updateUI();
+        return true;
+    },
+    
+    updateUI() {
+        // Update all wallet balance displays
+        document.querySelectorAll('.wallet-balance').forEach(el => {
+            el.textContent = this.balance;
+        });
+        document.querySelectorAll('.flamecoin-balance').forEach(el => {
+            el.innerHTML = `<i class="fas fa-fire"></i> ${this.balance}`;
+        });
+    },
+    
+    showBuyModal() {
+        const modal = document.createElement('div');
+        modal.className = 'wallet-modal';
+        modal.innerHTML = `
+            <div class="wallet-modal-content">
+                <button class="modal-close" onclick="this.closest('.wallet-modal').remove()">
+                    <i class="fas fa-times"></i>
+                </button>
+                <div class="wallet-header">
+                    <i class="fas fa-fire wallet-icon"></i>
+                    <h2>Acquista FlameCoins</h2>
+                    <p class="wallet-subtitle">Saldo attuale: <span class="balance-highlight">${this.balance}</span> coins</p>
+                </div>
+                <div class="coin-packages">
+                    ${this.coinPackages.map(pkg => `
+                        <div class="coin-package ${pkg.popular ? 'popular' : ''}" onclick="WalletSystem.buyPackage('${pkg.id}')">
+                            ${pkg.popular ? '<div class="popular-badge">PIÙ POPOLARE</div>' : ''}
+                            <div class="package-coins">
+                                <i class="fas fa-fire"></i>
+                                <span>${pkg.coins}</span>
+                                ${pkg.bonus > 0 ? `<span class="bonus">+${pkg.bonus} BONUS</span>` : ''}
+                            </div>
+                            <div class="package-price">€${pkg.price.toFixed(2)}</div>
+                        </div>
+                    `).join('')}
+                </div>
+                <div class="wallet-footer">
+                    <p><i class="fas fa-lock"></i> Pagamento sicuro con PayPal</p>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        
+        setTimeout(() => modal.classList.add('show'), 10);
+    },
+    
+    async buyPackage(packageId) {
+        const pkg = this.coinPackages.find(p => p.id === packageId);
+        if (!pkg) return;
+        
+        const totalCoins = pkg.coins + pkg.bonus;
+        
+        // PayPal integration
+        if (typeof paypal !== 'undefined') {
+            document.querySelector('.wallet-modal-content').innerHTML = `
+                <div class="wallet-header">
+                    <i class="fas fa-shopping-cart wallet-icon"></i>
+                    <h2>Conferma Acquisto</h2>
+                    <p>${totalCoins} FlameCoins per €${pkg.price.toFixed(2)}</p>
+                </div>
+                <div id="paypal-button-wallet" style="padding: 20px;"></div>
+                <button class="cancel-btn" onclick="document.querySelector('.wallet-modal').remove()">Annulla</button>
+            `;
+            
+            paypal.Buttons({
+                style: { layout: 'vertical', color: 'gold', shape: 'pill' },
+                createOrder: (data, actions) => {
+                    return actions.order.create({
+                        purchase_units: [{
+                            description: `FlameMatch - ${totalCoins} FlameCoins`,
+                            amount: { value: pkg.price.toFixed(2), currency_code: 'EUR' }
+                        }]
+                    });
+                },
+                onApprove: async (data, actions) => {
+                    const order = await actions.order.capture();
+                    await this.addCoins(totalCoins, `Acquisto ${totalCoins} FlameCoins (PayPal: ${order.id})`);
+                    document.querySelector('.wallet-modal').remove();
+                    showNotification(`Acquisto completato! +${totalCoins} FlameCoins 🔥`, 'success');
+                },
+                onError: (err) => {
+                    console.error('PayPal error:', err);
+                    showNotification('Errore nel pagamento. Riprova.', 'error');
+                }
+            }).render('#paypal-button-wallet');
+        } else {
+            // Fallback without PayPal loaded
+            showNotification('Sistema di pagamento in caricamento...', 'info');
+        }
+    },
+    
+    showWalletPanel() {
+        const modal = document.createElement('div');
+        modal.className = 'wallet-modal';
+        modal.innerHTML = `
+            <div class="wallet-modal-content wallet-panel">
+                <button class="modal-close" onclick="this.closest('.wallet-modal').remove()">
+                    <i class="fas fa-times"></i>
+                </button>
+                <div class="wallet-header">
+                    <i class="fas fa-wallet wallet-icon"></i>
+                    <h2>Il Tuo Wallet</h2>
+                    <div class="big-balance">
+                        <i class="fas fa-fire"></i>
+                        <span>${this.balance}</span>
+                    </div>
+                    <p>FlameCoins</p>
+                </div>
+                
+                <button class="buy-coins-btn" onclick="document.querySelector('.wallet-modal').remove(); WalletSystem.showBuyModal();">
+                    <i class="fas fa-plus-circle"></i> Acquista FlameCoins
+                </button>
+                
+                <div class="transactions-section">
+                    <h3><i class="fas fa-history"></i> Transazioni Recenti</h3>
+                    <div class="transactions-list">
+                        ${this.transactions.slice(0, 10).map(t => `
+                            <div class="transaction-item ${t.type}">
+                                <div class="transaction-info">
+                                    <span class="transaction-desc">${t.description}</span>
+                                    <span class="transaction-date">${this.formatDate(t.timestamp)}</span>
+                                </div>
+                                <span class="transaction-amount ${t.amount > 0 ? 'positive' : 'negative'}">
+                                    ${t.amount > 0 ? '+' : ''}${t.amount}
+                                </span>
+                            </div>
+                        `).join('')}
+                        ${this.transactions.length === 0 ? '<p class="no-transactions">Nessuna transazione</p>' : ''}
+                    </div>
+                </div>
+                
+                <div class="wallet-uses">
+                    <h3>Usa i tuoi FlameCoins per:</h3>
+                    <div class="uses-grid">
+                        <div class="use-item">
+                            <i class="fas fa-gift"></i>
+                            <span>Regali Virtuali</span>
+                        </div>
+                        <div class="use-item">
+                            <i class="fas fa-star"></i>
+                            <span>SuperLike</span>
+                        </div>
+                        <div class="use-item">
+                            <i class="fas fa-rocket"></i>
+                            <span>Boost Profilo</span>
+                        </div>
+                        <div class="use-item">
+                            <i class="fas fa-eye"></i>
+                            <span>Vedi Chi Ti Ha Likato</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        setTimeout(() => modal.classList.add('show'), 10);
+    },
+    
+    formatDate(timestamp) {
+        if (!timestamp) return '';
+        const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+        return date.toLocaleDateString('it-IT', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+    }
+};
+
+
+// ================================================================
+// 🎁 VIRTUAL GIFTS SYSTEM
+// ================================================================
+
+const VirtualGifts = {
+    gifts: [
+        // Basic Gifts (10-30 coins)
+        { id: 'rose', name: 'Rosa', emoji: '🌹', price: 10, animation: 'float-up', category: 'basic' },
+        { id: 'heart', name: 'Cuore', emoji: '❤️', price: 15, animation: 'pulse', category: 'basic' },
+        { id: 'kiss', name: 'Bacio', emoji: '💋', price: 15, animation: 'bounce', category: 'basic' },
+        { id: 'smile', name: 'Sorriso', emoji: '😊', price: 10, animation: 'wiggle', category: 'basic' },
+        { id: 'wink', name: 'Occhiolino', emoji: '😉', price: 10, animation: 'bounce', category: 'basic' },
+        { id: 'fire', name: 'Fuoco', emoji: '🔥', price: 20, animation: 'shake', category: 'basic' },
+        { id: 'star', name: 'Stella', emoji: '⭐', price: 20, animation: 'spin', category: 'basic' },
+        { id: 'sparkles', name: 'Scintille', emoji: '✨', price: 25, animation: 'sparkle', category: 'basic' },
+        { id: 'rainbow', name: 'Arcobaleno', emoji: '🌈', price: 25, animation: 'slide', category: 'basic' },
+        { id: 'sun', name: 'Sole', emoji: '☀️', price: 20, animation: 'glow', category: 'basic' },
+        
+        // Premium Gifts (50-100 coins)
+        { id: 'chocolate', name: 'Cioccolatini', emoji: '🍫', price: 50, animation: 'float-up', category: 'premium' },
+        { id: 'teddy', name: 'Orsacchiotto', emoji: '🧸', price: 75, animation: 'bounce', category: 'premium' },
+        { id: 'flowers', name: 'Bouquet', emoji: '💐', price: 80, animation: 'bloom', category: 'premium' },
+        { id: 'cake', name: 'Torta', emoji: '🎂', price: 60, animation: 'pop', category: 'premium' },
+        { id: 'balloon', name: 'Palloncino', emoji: '🎈', price: 50, animation: 'float-up', category: 'premium' },
+        { id: 'gift_box', name: 'Regalo', emoji: '🎁', price: 70, animation: 'shake', category: 'premium' },
+        { id: 'champagne', name: 'Champagne', emoji: '🍾', price: 100, animation: 'pop', category: 'premium' },
+        { id: 'cocktail', name: 'Cocktail', emoji: '🍹', price: 60, animation: 'wiggle', category: 'premium' },
+        { id: 'music', name: 'Musica', emoji: '🎵', price: 50, animation: 'bounce', category: 'premium' },
+        { id: 'pizza', name: 'Pizza', emoji: '🍕', price: 55, animation: 'spin', category: 'premium' },
+        
+        // Luxury Gifts (150-500 coins)
+        { id: 'diamond', name: 'Diamante', emoji: '💎', price: 200, animation: 'sparkle', category: 'luxury' },
+        { id: 'crown', name: 'Corona', emoji: '👑', price: 250, animation: 'glow', category: 'luxury' },
+        { id: 'ring', name: 'Anello', emoji: '💍', price: 300, animation: 'spin', category: 'luxury' },
+        { id: 'car', name: 'Auto Sportiva', emoji: '🏎️', price: 400, animation: 'slide', category: 'luxury' },
+        { id: 'yacht', name: 'Yacht', emoji: '🛥️', price: 500, animation: 'float', category: 'luxury' },
+        { id: 'rocket', name: 'Razzo', emoji: '🚀', price: 350, animation: 'fly-up', category: 'luxury' },
+        { id: 'castle', name: 'Castello', emoji: '🏰', price: 450, animation: 'build', category: 'luxury' },
+        { id: 'unicorn', name: 'Unicorno', emoji: '🦄', price: 300, animation: 'rainbow', category: 'luxury' },
+        { id: 'dragon', name: 'Drago', emoji: '🐉', price: 400, animation: 'fire', category: 'luxury' },
+        { id: 'treasure', name: 'Tesoro', emoji: '💰', price: 500, animation: 'shine', category: 'luxury' }
+    ],
+    
+    async sendGift(recipientId, giftId, matchId) {
+        const gift = this.gifts.find(g => g.id === giftId);
+        if (!gift) return false;
+        
+        // Check balance
+        const canSpend = await WalletSystem.spendCoins(gift.price, `Regalo: ${gift.emoji} ${gift.name}`);
+        if (!canSpend) return false;
+        
+        // Save gift to Firestore
+        const giftData = {
+            senderId: currentUser.id,
+            senderName: currentUser.name,
+            recipientId: recipientId,
+            matchId: matchId,
+            giftId: gift.id,
+            giftName: gift.name,
+            giftEmoji: gift.emoji,
+            giftPrice: gift.price,
+            timestamp: new Date()
+        };
+        
+        await db.collection('gifts').add(giftData);
+        
+        // Also add to chat as special message
+        if (matchId) {
+            await db.collection('matches').doc(matchId).collection('messages').add({
+                senderId: currentUser.id,
+                type: 'gift',
+                giftEmoji: gift.emoji,
+                giftName: gift.name,
+                text: `Ha inviato un regalo: ${gift.emoji} ${gift.name}`,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        }
+        
+        // Show animation
+        this.playGiftAnimation(gift);
+        
+        showNotification(`Hai inviato ${gift.emoji} ${gift.name}!`, 'success');
+        return true;
+    },
+    
+    playGiftAnimation(gift) {
+        const container = document.createElement('div');
+        container.className = 'gift-animation-container';
+        container.innerHTML = `
+            <div class="gift-animation ${gift.animation}">
+                <span class="gift-emoji">${gift.emoji}</span>
+                <span class="gift-name">${gift.name}</span>
+            </div>
+        `;
+        document.body.appendChild(container);
+        
+        // Play sound if available
+        try {
+            const audio = new Audio('data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA/+M4wAAAAAAAAAAAAEluZm8AAAAPAAAAAwAAAbAAqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAAAAbD/k5RSAAAAAAAAAAAAAAAAAAAA/+MYxAANCAJZkAhGAF9QEA4A');
+            audio.volume = 0.3;
+            audio.play().catch(() => {});
+        } catch(e) {}
+        
+        setTimeout(() => {
+            container.classList.add('fade-out');
+            setTimeout(() => container.remove(), 500);
+        }, 2500);
+    },
+    
+    showGiftPicker(recipientId, recipientName, matchId) {
+        const modal = document.createElement('div');
+        modal.className = 'gifts-modal';
+        modal.innerHTML = `
+            <div class="gifts-modal-content">
+                <button class="modal-close" onclick="this.closest('.gifts-modal').remove()">
+                    <i class="fas fa-times"></i>
+                </button>
+                <div class="gifts-header">
+                    <i class="fas fa-gift gifts-icon"></i>
+                    <h2>Invia un Regalo a ${recipientName}</h2>
+                    <p class="wallet-info">
+                        <i class="fas fa-fire"></i> 
+                        <span class="wallet-balance">${WalletSystem.balance}</span> FlameCoins
+                        <button class="add-coins-btn" onclick="this.closest('.gifts-modal').remove(); WalletSystem.showBuyModal();">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </p>
+                </div>
+                
+                <div class="gifts-tabs">
+                    <button class="gift-tab active" data-category="basic">💝 Base</button>
+                    <button class="gift-tab" data-category="premium">🎁 Premium</button>
+                    <button class="gift-tab" data-category="luxury">👑 Lusso</button>
+                </div>
+                
+                <div class="gifts-grid" id="gifts-grid">
+                    ${this.renderGiftsByCategory('basic')}
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        
+        // Tab switching
+        modal.querySelectorAll('.gift-tab').forEach(tab => {
+            tab.addEventListener('click', (e) => {
+                modal.querySelectorAll('.gift-tab').forEach(t => t.classList.remove('active'));
+                e.target.classList.add('active');
+                document.getElementById('gifts-grid').innerHTML = this.renderGiftsByCategory(e.target.dataset.category);
+                this.attachGiftListeners(recipientId, matchId, modal);
+            });
+        });
+        
+        this.attachGiftListeners(recipientId, matchId, modal);
+        setTimeout(() => modal.classList.add('show'), 10);
+    },
+    
+    renderGiftsByCategory(category) {
+        return this.gifts
+            .filter(g => g.category === category)
+            .map(g => `
+                <div class="gift-item ${WalletSystem.balance >= g.price ? '' : 'disabled'}" data-gift-id="${g.id}">
+                    <span class="gift-emoji">${g.emoji}</span>
+                    <span class="gift-name">${g.name}</span>
+                    <span class="gift-price">
+                        <i class="fas fa-fire"></i> ${g.price}
+                    </span>
+                </div>
+            `).join('');
+    },
+    
+    attachGiftListeners(recipientId, matchId, modal) {
+        modal.querySelectorAll('.gift-item:not(.disabled)').forEach(item => {
+            item.addEventListener('click', async () => {
+                const giftId = item.dataset.giftId;
+                modal.remove();
+                await this.sendGift(recipientId, giftId, matchId);
+            });
+        });
+    },
+    
+    async getReceivedGifts() {
+        if (!currentUser) return [];
+        
+        const snapshot = await db.collection('gifts')
+            .where('recipientId', '==', currentUser.id)
+            .orderBy('timestamp', 'desc')
+            .limit(50)
+            .get();
+        
+        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    },
+    
+    async getSentGifts() {
+        if (!currentUser) return [];
+        
+        const snapshot = await db.collection('gifts')
+            .where('senderId', '==', currentUser.id)
+            .orderBy('timestamp', 'desc')
+            .limit(50)
+            .get();
+        
+        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    },
+    
+    showGiftsHistory() {
+        Promise.all([this.getReceivedGifts(), this.getSentGifts()]).then(([received, sent]) => {
+            const modal = document.createElement('div');
+            modal.className = 'gifts-modal';
+            modal.innerHTML = `
+                <div class="gifts-modal-content gifts-history">
+                    <button class="modal-close" onclick="this.closest('.gifts-modal').remove()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                    <div class="gifts-header">
+                        <i class="fas fa-history gifts-icon"></i>
+                        <h2>Cronologia Regali</h2>
+                    </div>
+                    
+                    <div class="history-tabs">
+                        <button class="history-tab active" data-type="received">
+                            <i class="fas fa-inbox"></i> Ricevuti (${received.length})
+                        </button>
+                        <button class="history-tab" data-type="sent">
+                            <i class="fas fa-paper-plane"></i> Inviati (${sent.length})
+                        </button>
+                    </div>
+                    
+                    <div class="history-content" id="history-content">
+                        ${this.renderGiftHistory(received, 'received')}
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            
+            // Tab switching
+            modal.querySelectorAll('.history-tab').forEach(tab => {
+                tab.addEventListener('click', (e) => {
+                    modal.querySelectorAll('.history-tab').forEach(t => t.classList.remove('active'));
+                    e.target.classList.add('active');
+                    const type = e.target.dataset.type;
+                    document.getElementById('history-content').innerHTML = 
+                        this.renderGiftHistory(type === 'received' ? received : sent, type);
+                });
+            });
+            
+            setTimeout(() => modal.classList.add('show'), 10);
+        });
+    },
+    
+    renderGiftHistory(gifts, type) {
+        if (gifts.length === 0) {
+            return `<p class="no-gifts">Nessun regalo ${type === 'received' ? 'ricevuto' : 'inviato'}</p>`;
+        }
+        
+        return gifts.map(g => `
+            <div class="gift-history-item">
+                <span class="gift-emoji">${g.giftEmoji}</span>
+                <div class="gift-info">
+                    <span class="gift-name">${g.giftName}</span>
+                    <span class="gift-person">${type === 'received' ? 'Da: ' + g.senderName : 'A: destinatario'}</span>
+                </div>
+                <span class="gift-date">${this.formatDate(g.timestamp)}</span>
+            </div>
+        `).join('');
+    },
+    
+    formatDate(timestamp) {
+        if (!timestamp) return '';
+        const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+        return date.toLocaleDateString('it-IT', { day: '2-digit', month: 'short' });
+    }
+};
+
+// Initialize Wallet when user logs in
+auth.onAuthStateChanged(user => {
+    if (user) {
+        setTimeout(() => WalletSystem.init(), 2000);
+    }
+});
+
+
+// Helper function to open gift picker for current chat
+function openGiftPickerForCurrentChat() {
+    if (!currentChatMatchId || !currentChatUser) {
+        showNotification('Apri prima una chat!', 'error');
+        return;
+    }
+    VirtualGifts.showGiftPicker(
+        currentChatUser.id || currentChatUserId, 
+        currentChatUser.name || 'Match', 
+        currentChatMatchId
+    );
+}
+

@@ -3847,6 +3847,12 @@
                 <i class="fas fa-star"></i>
                 <span class="nav-badge likes-badge" style="display:none;">0</span>
             </a>
+            <a href="#" class="nav-item" id="navWallet" title="Wallet" onclick="WalletSystem.showWalletPanel(); return false;">
+                <i class="fas fa-coins" style="color: #ffa502;"></i>
+            </a>
+            <a href="#" class="nav-item" id="navGifts" title="Regali" onclick="VirtualGifts.showGiftsHistory(); return false;">
+                <i class="fas fa-gift" style="color: #ff6b6b;"></i>
+            </a>
             <a href="#" class="nav-item" id="navChat" title="Match" onclick="showMatches(event)">
                 <i class="fas fa-comments"></i>
                 <span class="nav-badge match-badge">0</span>
@@ -3876,6 +3882,10 @@
                     </button>
                     <button class="header-btn" onclick="openExploreModal()" title="Esplora">
                         <i class="fas fa-compass"></i>
+                    </button>
+                    <button class="header-btn wallet-header-btn" onclick="WalletSystem.showWalletPanel()" title="Wallet">
+                        <i class="fas fa-fire" style="color: #ffa502;"></i>
+                        <span class="wallet-balance" style="font-size: 12px; margin-left: 4px;">0</span>
                     </button>
                     <button class="header-btn" onclick="toggleSafeMode()" title="Modalità Sicura">
                         <i class="fas fa-shield-alt"></i>
@@ -3971,6 +3981,9 @@
             </button>
             <button class="icebreaker-chat-btn" onclick="openIcebreakerGames(currentChatMatchId)" title="Gioca insieme!">
                 <i class="fas fa-gamepad"></i>
+            </button>
+            <button class="gift-chat-btn" onclick="openGiftPickerForCurrentChat()" title="Invia Regalo">
+                <i class="fas fa-gift"></i>
             </button>
             <button class="ai-wingman-btn" onclick="toggleAIWingman()" title="AI Wingman">
                 <i class="fas fa-magic"></i> AI
