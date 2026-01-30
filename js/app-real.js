@@ -24,6 +24,24 @@ let currentChatMatchId = '';
 let currentChatUserId = ''; // ID utente con cui stai chattando
 let chatUnsubscribe = null;
 
+// ==========================================
+// 📍 CALCULATE DISTANCE (Haversine Formula)
+// ==========================================
+function calculateDistance(lat1, lon1, lat2, lon2) {
+    if (!lat1 || !lon1 || !lat2 || !lon2) return 999999; // Return large number if no coords
+    
+    const R = 6371; // Earth radius in kilometers
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+        Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const distance = R * c; // Distance in km
+    return Math.round(distance);
+}
+
 // Mostra profilo corrente da Explore
 function showCurrentProfile() {
     if (profilesToShow.length === 0) {
@@ -2372,12 +2390,12 @@ function activateBoost() {
 
 // ====== FILTRI FUNZIONANTI ======
 let currentFilters = {
+    showOnlineOnly: false,
+    hasPhotos: true,
+    hasBio: false,
     ageMin: 18,
     ageMax: 55,
     maxDistance: 50,
-    showVerifiedOnly: false
-};
-
 function openFilters() {
     let modal = document.getElementById('filtersModal');
     if (!modal) {
@@ -2389,62 +2407,145 @@ function openFilters() {
     }
     
     modal.innerHTML = `
-        <div class="modal-header">
-            <h2>⚙️ Filtri di Ricerca</h2>
+        <div class="modal-header" style="background: linear-gradient(135deg, #ff4b6e 0%, #ff6b8a 100%);">
+            <h2 style="display:flex;align-items:center;gap:10px;"><span style="font-size:28px;">⚙️</span> Filtri di Ricerca</h2>
             <button onclick="closeFiltersModal()" class="close-btn">&times;</button>
         </div>
-        <div class="modal-body privacy-body">
-            <div class="privacy-section">
-                <h3><i class="fas fa-birthday-cake"></i> Età</h3>
-                
-                <div class="filter-range">
-                    <div class="range-labels">
-                        <span>Min: <strong id="ageMinLabel">${currentFilters.ageMin}</strong> anni</span>
-                        <span>Max: <strong id="ageMaxLabel">${currentFilters.ageMax}</strong> anni</span>
-                    </div>
-                    <div class="dual-range">
-                        <input type="range" id="ageMinSlider" min="18" max="70" value="${currentFilters.ageMin}" 
-                            oninput="updateAgeMin(this.value)" style="width: 100%; accent-color: #ff4b6e;">
-                        <input type="range" id="ageMaxSlider" min="18" max="70" value="${currentFilters.ageMax}" 
-                            oninput="updateAgeMax(this.value)" style="width: 100%; accent-color: #ff4b6e; margin-top: 10px;">
-                    </div>
+        <div class="modal-body privacy-body" style="padding-bottom:100px;">
+            
+            <!-- Età -->
+            <div class="privacy-section" style="background:linear-gradient(135deg, rgba(255,75,110,0.1), rgba(255,107,138,0.05)); border:1px solid rgba(255,75,110,0.2); border-radius:16px; padding:20px; margin:15px;">
+                <h3 style="display:flex;align-items:center;gap:10px;color:#ff4b6e;margin-bottom:15px;">
+                    <span style="font-size:24px;">🎂</span> Età
+                </h3>
+                <div class="range-labels" style="display:flex;justify-content:space-between;margin-bottom:10px;">
+                    <span style="background:rgba(255,75,110,0.2);padding:8px 16px;border-radius:20px;font-weight:600;">
+                        Min: <strong id="ageMinLabel" style="color:#ff4b6e;font-size:18px;">${currentFilters.ageMin}</strong> anni
+                    </span>
+                    <span style="background:rgba(255,75,110,0.2);padding:8px 16px;border-radius:20px;font-weight:600;">
+                        Max: <strong id="ageMaxLabel" style="color:#ff4b6e;font-size:18px;">${currentFilters.ageMax}</strong> anni
+                    </span>
+                </div>
+                <div style="padding:10px 0;">
+                    <input type="range" id="ageMinSlider" min="18" max="70" value="${currentFilters.ageMin}" 
+                        oninput="updateAgeMin(this.value)" style="width:100%;height:8px;accent-color:#ff4b6e;cursor:pointer;">
+                    <input type="range" id="ageMaxSlider" min="18" max="70" value="${currentFilters.ageMax}" 
+                        oninput="updateAgeMax(this.value)" style="width:100%;height:8px;accent-color:#ff4b6e;margin-top:15px;cursor:pointer;">
                 </div>
             </div>
             
-            <div class="privacy-section">
-                <h3><i class="fas fa-map-marker-alt"></i> Distanza Massima</h3>
-                
-                <div class="filter-range">
-                    <div class="range-labels">
-                        <span>Fino a <strong id="distanceLabel">${currentFilters.maxDistance}</strong> km</span>
-                    </div>
-                    <input type="range" id="distanceSlider" min="1" max="100" value="${currentFilters.maxDistance}" 
-                        oninput="updateDistance(this.value)" style="width: 100%; accent-color: #ff4b6e;">
+            <!-- Distanza -->
+            <div class="privacy-section" style="background:linear-gradient(135deg, rgba(0,184,148,0.1), rgba(0,184,148,0.05)); border:1px solid rgba(0,184,148,0.2); border-radius:16px; padding:20px; margin:15px;">
+                <h3 style="display:flex;align-items:center;gap:10px;color:#00b894;margin-bottom:15px;">
+                    <span style="font-size:24px;">📍</span> Distanza Massima
+                </h3>
+                <div style="text-align:center;margin-bottom:15px;">
+                    <span style="background:rgba(0,184,148,0.2);padding:12px 24px;border-radius:25px;font-weight:700;font-size:20px;">
+                        <span id="distanceLabel" style="color:#00b894;font-size:28px;">${currentFilters.maxDistance}</span> km
+                    </span>
+                </div>
+                <input type="range" id="distanceSlider" min="1" max="200" value="${currentFilters.maxDistance}" 
+                    oninput="updateDistance(this.value)" style="width:100%;height:8px;accent-color:#00b894;cursor:pointer;">
+                <div style="display:flex;justify-content:space-between;margin-top:8px;color:rgba(255,255,255,0.5);font-size:12px;">
+                    <span>1 km</span>
+                    <span>100 km</span>
+                    <span>200 km</span>
                 </div>
             </div>
             
-            <div class="privacy-section">
-                <h3><i class="fas fa-shield-alt"></i> Preferenze</h3>
+            <!-- Preferenze Qualità -->
+            <div class="privacy-section" style="background:linear-gradient(135deg, rgba(108,92,231,0.1), rgba(108,92,231,0.05)); border:1px solid rgba(108,92,231,0.2); border-radius:16px; padding:20px; margin:15px;">
+                <h3 style="display:flex;align-items:center;gap:10px;color:#6c5ce7;margin-bottom:15px;">
+                    <span style="font-size:24px;">✨</span> Qualità Profili
+                </h3>
                 
-                <div class="privacy-option">
+                <div class="privacy-option" style="background:rgba(255,255,255,0.03);padding:15px;border-radius:12px;margin-bottom:10px;">
                     <div class="option-info">
-                        <span class="option-title">Solo profili verificati</span>
+                        <span class="option-title" style="display:flex;align-items:center;gap:8px;">
+                            <span style="font-size:20px;">✅</span> Solo profili verificati
+                        </span>
                         <span class="option-desc">Mostra solo utenti con selfie verificato</span>
                     </div>
                     <label class="switch">
                         <input type="checkbox" id="verifiedOnlyToggle" ${currentFilters.showVerifiedOnly ? 'checked' : ''} 
-                            onchange="toggleVerifiedOnly()">
+                            onchange="currentFilters.showVerifiedOnly = this.checked">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+                
+                <div class="privacy-option" style="background:rgba(255,255,255,0.03);padding:15px;border-radius:12px;margin-bottom:10px;">
+                    <div class="option-info">
+                        <span class="option-title" style="display:flex;align-items:center;gap:8px;">
+                            <span style="font-size:20px;">🟢</span> Solo utenti online
+                        </span>
+                        <span class="option-desc">Mostra chi è attivo ora o nelle ultime 24h</span>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="onlineOnlyToggle" ${currentFilters.showOnlineOnly ? 'checked' : ''} 
+                            onchange="currentFilters.showOnlineOnly = this.checked">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+                
+                <div class="privacy-option" style="background:rgba(255,255,255,0.03);padding:15px;border-radius:12px;margin-bottom:10px;">
+                    <div class="option-info">
+                        <span class="option-title" style="display:flex;align-items:center;gap:8px;">
+                            <span style="font-size:20px;">📸</span> Solo con foto
+                        </span>
+                        <span class="option-desc">Mostra solo profili con almeno una foto</span>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="hasPhotosToggle" ${currentFilters.hasPhotos ? 'checked' : ''} 
+                            onchange="currentFilters.hasPhotos = this.checked">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+                
+                <div class="privacy-option" style="background:rgba(255,255,255,0.03);padding:15px;border-radius:12px;">
+                    <div class="option-info">
+                        <span class="option-title" style="display:flex;align-items:center;gap:8px;">
+                            <span style="font-size:20px;">📝</span> Solo con bio
+                        </span>
+                        <span class="option-desc">Mostra solo profili con descrizione</span>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="hasBioToggle" ${currentFilters.hasBio ? 'checked' : ''} 
+                            onchange="currentFilters.hasBio = this.checked">
                         <span class="slider round"></span>
                     </label>
                 </div>
             </div>
             
-            <div style="padding: 20px; display: flex; gap: 10px;">
-                <button onclick="resetFilters()" style="
-                    flex: 1; padding: 15px; border-radius: 25px; border: 2px solid #ff4b6e;
-                    background: transparent; color: #ff4b6e; font-weight: 600; cursor: pointer;">
-                    Resetta
-                </button>
+            <!-- Stats Preview -->
+            <div style="background:rgba(255,255,255,0.03);border-radius:16px;padding:20px;margin:15px;text-align:center;">
+                <p style="color:rgba(255,255,255,0.6);margin:0 0 10px 0;font-size:14px;">
+                    💡 I filtri verranno applicati alla schermata Discover
+                </p>
+            </div>
+        </div>
+        
+        <!-- Fixed Bottom Buttons -->
+        <div style="position:fixed;bottom:0;left:0;right:0;padding:15px 20px;background:linear-gradient(to top, #1a1a2e 80%, transparent);display:flex;gap:12px;z-index:100;">
+            <button onclick="resetFilters()" style="
+                flex:1;padding:16px;border-radius:30px;border:2px solid #ff4b6e;
+                background:transparent;color:#ff4b6e;font-weight:700;cursor:pointer;
+                font-size:16px;transition:all 0.3s;">
+                🔄 Resetta
+            </button>
+            <button onclick="applyFilters()" style="
+                flex:2;padding:16px;border-radius:30px;border:none;
+                background:linear-gradient(135deg, #ff4b6e, #ff6b8a);color:white;
+                font-weight:700;cursor:pointer;font-size:16px;
+                box-shadow:0 4px 15px rgba(255,75,110,0.4);transition:all 0.3s;">
+                ✨ Applica Filtri
+            </button>
+        </div>
+    `;
+    
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
                 <button onclick="applyFilters()" style="
                     flex: 2; padding: 15px; border-radius: 25px; border: none;
                     background: linear-gradient(135deg, #ff4b6e, #ff6b8a); color: white; 
@@ -2495,11 +2596,14 @@ function toggleVerifiedOnly() {
 }
 
 function resetFilters() {
-    currentFilters = { ageMin: 18, ageMax: 55, maxDistance: 50, showVerifiedOnly: false };
+    currentFilters = { ageMin: 18, ageMax: 55, maxDistance: 50, showVerifiedOnly: false, showOnlineOnly: false, hasPhotos: true, hasBio: false };
     document.getElementById('ageMinSlider').value = 18;
     document.getElementById('ageMaxSlider').value = 55;
     document.getElementById('distanceSlider').value = 50;
     document.getElementById('verifiedOnlyToggle').checked = false;
+    document.getElementById('onlineOnlyToggle').checked = false;
+    document.getElementById('hasPhotosToggle').checked = true;
+    document.getElementById('hasBioToggle').checked = false;
     document.getElementById('ageMinLabel').textContent = '18';
     document.getElementById('ageMaxLabel').textContent = '55';
     document.getElementById('distanceLabel').textContent = '50';
@@ -2572,6 +2676,22 @@ async function loadFilteredProfiles() {
             
             // Applica filtro verificati
             if (currentFilters.showVerifiedOnly && !data.isVerified) return;
+            
+            // Applica filtro solo online (attivi nelle ultime 24h)
+            if (currentFilters.showOnlineOnly) {
+                const lastActive = data.lastActive?.toDate ? data.lastActive.toDate() : null;
+                if (!lastActive || (now - lastActive) > 24 * 60 * 60 * 1000) return;
+            }
+            
+            // Applica filtro con foto
+            if (currentFilters.hasPhotos) {
+                if (!data.photos || data.photos.length === 0) return;
+            }
+            
+            // Applica filtro con bio
+            if (currentFilters.hasBio) {
+                if (!data.bio || data.bio.trim().length < 10) return;
+            }
             
             // Applica filtro distanza (se disponibile)
             if (data.location && currentUserProfile.location) {
