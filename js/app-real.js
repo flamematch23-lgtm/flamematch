@@ -2397,175 +2397,157 @@ let currentFilters = {
     ageMax: 55,
     maxDistance: 50,
 function openFilters() {
-    let modal = document.getElementById('filtersModal');
-    if (!modal) {
-        modal = document.createElement('div');
-        modal.id = 'filtersModal';
-        modal.className = 'fullscreen-modal';
-        document.body.appendChild(modal);
-        modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
-    }
+    document.querySelectorAll('.fm-filters-overlay').forEach(m => m.remove());
     
-    modal.innerHTML = `
-        <div class="modal-header" style="background: linear-gradient(135deg, #ff4b6e 0%, #ff6b8a 100%);">
-            <h2 style="display:flex;align-items:center;gap:10px;"><span style="font-size:28px;">⚙️</span> Filtri di Ricerca</h2>
-            <button onclick="closeFiltersModal()" class="close-btn">&times;</button>
-        </div>
-        <div class="modal-body privacy-body" style="padding-bottom:100px;">
-            
-            <!-- Età -->
-            <div class="privacy-section" style="background:linear-gradient(135deg, rgba(255,75,110,0.1), rgba(255,107,138,0.05)); border:1px solid rgba(255,75,110,0.2); border-radius:16px; padding:20px; margin:15px;">
-                <h3 style="display:flex;align-items:center;gap:10px;color:#ff4b6e;margin-bottom:15px;">
-                    <span style="font-size:24px;">🎂</span> Età
-                </h3>
-                <div class="range-labels" style="display:flex;justify-content:space-between;margin-bottom:10px;">
-                    <span style="background:rgba(255,75,110,0.2);padding:8px 16px;border-radius:20px;font-weight:600;">
-                        Min: <strong id="ageMinLabel" style="color:#ff4b6e;font-size:18px;">${currentFilters.ageMin}</strong> anni
-                    </span>
-                    <span style="background:rgba(255,75,110,0.2);padding:8px 16px;border-radius:20px;font-weight:600;">
-                        Max: <strong id="ageMaxLabel" style="color:#ff4b6e;font-size:18px;">${currentFilters.ageMax}</strong> anni
-                    </span>
-                </div>
-                <div style="padding:10px 0;">
-                    <input type="range" id="ageMinSlider" min="18" max="70" value="${currentFilters.ageMin}" 
-                        oninput="updateAgeMin(this.value)" style="width:100%;height:8px;accent-color:#ff4b6e;cursor:pointer;">
-                    <input type="range" id="ageMaxSlider" min="18" max="70" value="${currentFilters.ageMax}" 
-                        oninput="updateAgeMax(this.value)" style="width:100%;height:8px;accent-color:#ff4b6e;margin-top:15px;cursor:pointer;">
-                </div>
+    const overlay = document.createElement('div');
+    overlay.className = 'fm-filters-overlay';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);z-index:10000;overflow-y:auto;animation:fadeIn 0.3s ease;';
+    
+    overlay.innerHTML = `
+        <div style="min-height:100%;background:linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f0f23 100%);">
+            <!-- Header -->
+            <div style="background:linear-gradient(135deg, #ff4b6e 0%, #ff6b8a 100%);padding:20px;position:sticky;top:0;z-index:10;display:flex;justify-content:space-between;align-items:center;box-shadow:0 4px 20px rgba(255,75,110,0.4);">
+                <h2 style="color:#fff;margin:0;font-size:20px;display:flex;align-items:center;gap:10px;font-weight:700;">
+                    <span style="font-size:28px;">⚙️</span> Filtri di Ricerca
+                </h2>
+                <button onclick="document.querySelector('.fm-filters-overlay').remove()" style="width:40px;height:40px;border-radius:50%;background:rgba(0,0,0,0.2);border:none;color:#fff;font-size:28px;cursor:pointer;">×</button>
             </div>
             
-            <!-- Distanza -->
-            <div class="privacy-section" style="background:linear-gradient(135deg, rgba(0,184,148,0.1), rgba(0,184,148,0.05)); border:1px solid rgba(0,184,148,0.2); border-radius:16px; padding:20px; margin:15px;">
-                <h3 style="display:flex;align-items:center;gap:10px;color:#00b894;margin-bottom:15px;">
-                    <span style="font-size:24px;">📍</span> Distanza Massima
-                </h3>
-                <div style="text-align:center;margin-bottom:15px;">
-                    <span style="background:rgba(0,184,148,0.2);padding:12px 24px;border-radius:25px;font-weight:700;font-size:20px;">
-                        <span id="distanceLabel" style="color:#00b894;font-size:28px;">${currentFilters.maxDistance}</span> km
-                    </span>
-                </div>
-                <input type="range" id="distanceSlider" min="1" max="200" value="${currentFilters.maxDistance}" 
-                    oninput="updateDistance(this.value)" style="width:100%;height:8px;accent-color:#00b894;cursor:pointer;">
-                <div style="display:flex;justify-content:space-between;margin-top:8px;color:rgba(255,255,255,0.5);font-size:12px;">
-                    <span>1 km</span>
-                    <span>100 km</span>
-                    <span>200 km</span>
-                </div>
-            </div>
-            
-            <!-- Preferenze Qualità -->
-            <div class="privacy-section" style="background:linear-gradient(135deg, rgba(108,92,231,0.1), rgba(108,92,231,0.05)); border:1px solid rgba(108,92,231,0.2); border-radius:16px; padding:20px; margin:15px;">
-                <h3 style="display:flex;align-items:center;gap:10px;color:#6c5ce7;margin-bottom:15px;">
-                    <span style="font-size:24px;">✨</span> Qualità Profili
-                </h3>
+            <!-- Content -->
+            <div style="padding:20px;padding-bottom:100px;">
                 
-                <div class="privacy-option" style="background:rgba(255,255,255,0.03);padding:15px;border-radius:12px;margin-bottom:10px;">
-                    <div class="option-info">
-                        <span class="option-title" style="display:flex;align-items:center;gap:8px;">
-                            <span style="font-size:20px;">✅</span> Solo profili verificati
-                        </span>
-                        <span class="option-desc">Mostra solo utenti con selfie verificato</span>
+                <!-- Età Section -->
+                <div style="background:linear-gradient(135deg, rgba(255,75,110,0.15) 0%, rgba(255,107,138,0.08) 100%);border:2px solid rgba(255,75,110,0.3);border-radius:20px;padding:25px;margin-bottom:20px;">
+                    <h3 style="color:#ff4b6e;margin:0 0 20px 0;font-size:18px;display:flex;align-items:center;gap:12px;">
+                        <span style="font-size:30px;">🎂</span> Età
+                    </h3>
+                    <div style="display:flex;justify-content:space-between;margin-bottom:20px;">
+                        <div style="background:rgba(255,75,110,0.25);padding:12px 20px;border-radius:25px;text-align:center;">
+                            <div style="color:rgba(255,255,255,0.7);font-size:12px;margin-bottom:4px;">MIN</div>
+                            <div style="color:#ff4b6e;font-size:28px;font-weight:800;" id="ageMinLabel">${currentFilters.ageMin}</div>
+                        </div>
+                        <div style="display:flex;align-items:center;color:rgba(255,255,255,0.4);">—</div>
+                        <div style="background:rgba(255,75,110,0.25);padding:12px 20px;border-radius:25px;text-align:center;">
+                            <div style="color:rgba(255,255,255,0.7);font-size:12px;margin-bottom:4px;">MAX</div>
+                            <div style="color:#ff4b6e;font-size:28px;font-weight:800;" id="ageMaxLabel">${currentFilters.ageMax}</div>
+                        </div>
                     </div>
-                    <label class="switch">
-                        <input type="checkbox" id="verifiedOnlyToggle" ${currentFilters.showVerifiedOnly ? 'checked' : ''} 
-                            onchange="currentFilters.showVerifiedOnly = this.checked">
-                        <span class="slider round"></span>
-                    </label>
+                    <div style="padding:0 10px;">
+                        <input type="range" id="ageMinSlider" min="18" max="70" value="${currentFilters.ageMin}" 
+                            oninput="updateAgeMin(this.value)" 
+                            style="width:100%;height:8px;accent-color:#ff4b6e;cursor:pointer;background:rgba(255,75,110,0.3);border-radius:10px;">
+                        <input type="range" id="ageMaxSlider" min="18" max="70" value="${currentFilters.ageMax}" 
+                            oninput="updateAgeMax(this.value)" 
+                            style="width:100%;height:8px;accent-color:#ff4b6e;cursor:pointer;margin-top:15px;background:rgba(255,75,110,0.3);border-radius:10px;">
+                    </div>
                 </div>
                 
-                <div class="privacy-option" style="background:rgba(255,255,255,0.03);padding:15px;border-radius:12px;margin-bottom:10px;">
-                    <div class="option-info">
-                        <span class="option-title" style="display:flex;align-items:center;gap:8px;">
-                            <span style="font-size:20px;">🟢</span> Solo utenti online
-                        </span>
-                        <span class="option-desc">Mostra chi è attivo ora o nelle ultime 24h</span>
+                <!-- Distanza Section -->
+                <div style="background:linear-gradient(135deg, rgba(0,184,148,0.15) 0%, rgba(0,206,201,0.08) 100%);border:2px solid rgba(0,184,148,0.3);border-radius:20px;padding:25px;margin-bottom:20px;">
+                    <h3 style="color:#00b894;margin:0 0 20px 0;font-size:18px;display:flex;align-items:center;gap:12px;">
+                        <span style="font-size:30px;">📍</span> Distanza Massima
+                    </h3>
+                    <div style="text-align:center;margin-bottom:20px;">
+                        <div style="background:rgba(0,184,148,0.25);padding:15px 30px;border-radius:30px;display:inline-block;">
+                            <span style="color:#00b894;font-size:42px;font-weight:800;" id="distanceLabel">${currentFilters.maxDistance}</span>
+                            <span style="color:rgba(255,255,255,0.7);font-size:18px;margin-left:5px;">km</span>
+                        </div>
                     </div>
-                    <label class="switch">
+                    <input type="range" id="distanceSlider" min="1" max="200" value="${currentFilters.maxDistance}" 
+                        oninput="updateDistance(this.value)"
+                        style="width:100%;height:8px;accent-color:#00b894;cursor:pointer;background:rgba(0,184,148,0.3);border-radius:10px;">
+                    <div style="display:flex;justify-content:space-between;margin-top:10px;color:rgba(255,255,255,0.5);font-size:12px;">
+                        <span>1 km</span>
+                        <span>200 km</span>
+                    </div>
+                </div>
+                
+                <!-- Preferenze Section -->
+                <div style="background:linear-gradient(135deg, rgba(162,155,254,0.15) 0%, rgba(129,236,236,0.08) 100%);border:2px solid rgba(162,155,254,0.3);border-radius:20px;padding:25px;margin-bottom:20px;">
+                    <h3 style="color:#a29bfe;margin:0 0 20px 0;font-size:18px;display:flex;align-items:center;gap:12px;">
+                        <span style="font-size:30px;">✨</span> Preferenze
+                    </h3>
+                    
+                    <!-- Verificati -->
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:15px;background:rgba(255,255,255,0.05);border-radius:12px;margin-bottom:12px;">
+                        <div style="display:flex;align-items:center;gap:12px;">
+                            <span style="font-size:24px;">✅</span>
+                            <div>
+                                <div style="color:#fff;font-weight:600;">Solo Verificati</div>
+                                <div style="color:rgba(255,255,255,0.5);font-size:12px;">Mostra solo profili verificati</div>
+                            </div>
+                        </div>
+                        <label style="position:relative;width:50px;height:26px;cursor:pointer;">
+                            <input type="checkbox" id="verifiedOnlyToggle" ${currentFilters.showVerifiedOnly ? 'checked' : ''} 
+                                onchange="currentFilters.showVerifiedOnly = this.checked"
+                                style="opacity:0;width:0;height:0;">
+                            <span style="position:absolute;top:0;left:0;right:0;bottom:0;background:${currentFilters.showVerifiedOnly ? '#00b894' : 'rgba(255,255,255,0.2)'};border-radius:26px;transition:0.3s;"></span>
+                            <span style="position:absolute;height:20px;width:20px;left:${currentFilters.showVerifiedOnly ? '27px' : '3px'};bottom:3px;background:#fff;border-radius:50%;transition:0.3s;"></span>
+                        </label>
+                    </div>
+                    
+                    <!-- Online -->
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:15px;background:rgba(255,255,255,0.05);border-radius:12px;margin-bottom:12px;">
+                        <div style="display:flex;align-items:center;gap:12px;">
+                            <span style="font-size:24px;">🟢</span>
+                            <div>
+                                <div style="color:#fff;font-weight:600;">Solo Online</div>
+                                <div style="color:rgba(255,255,255,0.5);font-size:12px;">Attivi nelle ultime 24h</div>
+                            </div>
+                        </div>
                         <input type="checkbox" id="onlineOnlyToggle" ${currentFilters.showOnlineOnly ? 'checked' : ''} 
-                            onchange="currentFilters.showOnlineOnly = this.checked">
-                        <span class="slider round"></span>
-                    </label>
-                </div>
-                
-                <div class="privacy-option" style="background:rgba(255,255,255,0.03);padding:15px;border-radius:12px;margin-bottom:10px;">
-                    <div class="option-info">
-                        <span class="option-title" style="display:flex;align-items:center;gap:8px;">
-                            <span style="font-size:20px;">📸</span> Solo con foto
-                        </span>
-                        <span class="option-desc">Mostra solo profili con almeno una foto</span>
+                            onchange="currentFilters.showOnlineOnly = this.checked"
+                            style="width:50px;height:26px;accent-color:#00b894;cursor:pointer;">
                     </div>
-                    <label class="switch">
+                    
+                    <!-- Con Foto -->
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:15px;background:rgba(255,255,255,0.05);border-radius:12px;margin-bottom:12px;">
+                        <div style="display:flex;align-items:center;gap:12px;">
+                            <span style="font-size:24px;">📸</span>
+                            <div>
+                                <div style="color:#fff;font-weight:600;">Solo con Foto</div>
+                                <div style="color:rgba(255,255,255,0.5);font-size:12px;">Almeno una foto profilo</div>
+                            </div>
+                        </div>
                         <input type="checkbox" id="hasPhotosToggle" ${currentFilters.hasPhotos ? 'checked' : ''} 
-                            onchange="currentFilters.hasPhotos = this.checked">
-                        <span class="slider round"></span>
-                    </label>
-                </div>
-                
-                <div class="privacy-option" style="background:rgba(255,255,255,0.03);padding:15px;border-radius:12px;">
-                    <div class="option-info">
-                        <span class="option-title" style="display:flex;align-items:center;gap:8px;">
-                            <span style="font-size:20px;">📝</span> Solo con bio
-                        </span>
-                        <span class="option-desc">Mostra solo profili con descrizione</span>
+                            onchange="currentFilters.hasPhotos = this.checked"
+                            style="width:50px;height:26px;accent-color:#00b894;cursor:pointer;">
                     </div>
-                    <label class="switch">
+                    
+                    <!-- Con Bio -->
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:15px;background:rgba(255,255,255,0.05);border-radius:12px;">
+                        <div style="display:flex;align-items:center;gap:12px;">
+                            <span style="font-size:24px;">📝</span>
+                            <div>
+                                <div style="color:#fff;font-weight:600;">Solo con Bio</div>
+                                <div style="color:rgba(255,255,255,0.5);font-size:12px;">Profili con descrizione</div>
+                            </div>
+                        </div>
                         <input type="checkbox" id="hasBioToggle" ${currentFilters.hasBio ? 'checked' : ''} 
-                            onchange="currentFilters.hasBio = this.checked">
-                        <span class="slider round"></span>
-                    </label>
+                            onchange="currentFilters.hasBio = this.checked"
+                            style="width:50px;height:26px;accent-color:#00b894;cursor:pointer;">
+                    </div>
                 </div>
             </div>
             
-            <!-- Stats Preview -->
-            <div style="background:rgba(255,255,255,0.03);border-radius:16px;padding:20px;margin:15px;text-align:center;">
-                <p style="color:rgba(255,255,255,0.6);margin:0 0 10px 0;font-size:14px;">
-                    💡 I filtri verranno applicati alla schermata Discover
-                </p>
-            </div>
-        </div>
-        
-        <!-- Fixed Bottom Buttons -->
-        <div style="position:fixed;bottom:0;left:0;right:0;padding:15px 20px;background:linear-gradient(to top, #1a1a2e 80%, transparent);display:flex;gap:12px;z-index:100;">
-            <button onclick="resetFilters()" style="
-                flex:1;padding:16px;border-radius:30px;border:2px solid #ff4b6e;
-                background:transparent;color:#ff4b6e;font-weight:700;cursor:pointer;
-                font-size:16px;transition:all 0.3s;">
-                🔄 Resetta
-            </button>
-            <button onclick="applyFilters()" style="
-                flex:2;padding:16px;border-radius:30px;border:none;
-                background:linear-gradient(135deg, #ff4b6e, #ff6b8a);color:white;
-                font-weight:700;cursor:pointer;font-size:16px;
-                box-shadow:0 4px 15px rgba(255,75,110,0.4);transition:all 0.3s;">
-                ✨ Applica Filtri
-            </button>
-        </div>
-    `;
-    
-    modal.style.display = 'flex';
-    document.body.style.overflow = 'hidden';
-}
-
-                <button onclick="applyFilters()" style="
-                    flex: 2; padding: 15px; border-radius: 25px; border: none;
-                    background: linear-gradient(135deg, #ff4b6e, #ff6b8a); color: white; 
-                    font-weight: 600; cursor: pointer;">
-                    Applica Filtri
+            <!-- Fixed Buttons -->
+            <div style="position:fixed;bottom:0;left:0;right:0;background:linear-gradient(0deg, #0f0f23 0%, transparent 100%);padding:20px;display:flex;gap:15px;">
+                <button onclick="resetFilters()" style="flex:1;padding:16px;background:rgba(255,255,255,0.1);border:none;border-radius:15px;color:#fff;font-size:16px;font-weight:600;cursor:pointer;">
+                    🔄 Resetta
+                </button>
+                <button onclick="applyFilters()" style="flex:2;padding:16px;background:linear-gradient(135deg, #ff4b6e 0%, #ff6b8a 100%);border:none;border-radius:15px;color:#fff;font-size:16px;font-weight:700;cursor:pointer;box-shadow:0 8px 25px rgba(255,75,110,0.4);">
+                    ✅ Applica Filtri
                 </button>
             </div>
         </div>
     `;
     
-    modal.style.display = 'flex';
-    document.body.style.overflow = 'hidden';
+    document.body.appendChild(overlay);
 }
 
 function closeFiltersModal() {
-    const modal = document.getElementById('filtersModal');
-    if (modal) modal.style.display = 'none';
-    document.body.style.overflow = '';
+    document.querySelectorAll('.fm-filters-overlay').forEach(m => m.remove());
 }
-
 function updateAgeMin(val) {
     currentFilters.ageMin = parseInt(val);
     document.getElementById('ageMinLabel').textContent = val;
@@ -7927,290 +7909,255 @@ setTimeout(() => {
 // 💰 WALLET SYSTEM - FIXED WITH INLINE STYLES
 // ============================================
 
+
+// ========================================
+// WALLET SYSTEM - FULL INLINE STYLES
+// ========================================
 const WalletSystem = {
     balance: 50,
     transactions: [],
     
-    coinPackages: [
-        { id: 'coins_100', coins: 100, price: 4.99, popular: false, bonus: 0 },
-        { id: 'coins_300', coins: 300, price: 9.99, popular: true, bonus: 50 },
-        { id: 'coins_500', coins: 500, price: 14.99, popular: false, bonus: 100 },
-        { id: 'coins_1000', coins: 1000, price: 24.99, popular: false, bonus: 250 },
-        { id: 'coins_2500', coins: 2500, price: 49.99, popular: false, bonus: 750 }
-    ],
-    
     async init() {
-        if (!currentUser) return;
-        await this.loadWallet();
-        this.updateUI();
-    },
-    
-    async loadWallet() {
+        const user = FlameAuth.currentUser;
+        if (!user) return;
+        
         try {
-            const doc = await db.collection('wallets').doc(currentUser.id).get();
+            const doc = await firebase.firestore().collection('users').doc(user.uid).get();
             if (doc.exists) {
-                const data = doc.data();
-                this.balance = data.balance || 0;
-                this.transactions = data.transactions || [];
+                this.balance = doc.data().flameCoins || 50;
+                this.transactions = doc.data().coinTransactions || [];
             } else {
-                // New user - give 50 free coins
-                this.balance = 50;
-                this.transactions = [{
-                    type: 'bonus',
-                    amount: 50,
-                    description: 'Bonus di benvenuto! 🎉',
-                    timestamp: new Date()
-                }];
-                await this.saveWallet();
+                await firebase.firestore().collection('users').doc(user.uid).set({
+                    flameCoins: 50,
+                    coinTransactions: [{type: 'bonus', amount: 50, description: '🎁 Bonus di benvenuto!', date: new Date().toISOString()}]
+                }, { merge: true });
             }
         } catch(e) {
-            console.log('Wallet load error:', e);
-            this.balance = 50;
+            console.error('Wallet init error:', e);
         }
-    },
-    
-    async saveWallet() {
-        if (!currentUser) return;
-        try {
-            await db.collection('wallets').doc(currentUser.id).set({
-                balance: this.balance,
-                transactions: this.transactions.slice(0, 50),
-                updatedAt: new Date()
-            });
-        } catch(e) {
-            console.log('Wallet save error:', e);
-        }
-    },
-    
-    updateUI() {
-        document.querySelectorAll('.wallet-balance').forEach(el => {
-            el.textContent = this.balance;
-        });
     },
     
     async addCoins(amount, description) {
         this.balance += amount;
-        this.transactions.unshift({
-            type: 'credit',
-            amount: amount,
-            description: description,
-            timestamp: new Date()
-        });
-        await this.saveWallet();
-        this.updateUI();
+        this.transactions.unshift({type: 'credit', amount, description, date: new Date().toISOString()});
+        await this.saveToFirebase();
     },
     
     async spendCoins(amount, description) {
         if (this.balance < amount) {
-            showNotification('FlameCoins insufficienti! Acquista altri coins.', 'error');
-            this.showBuyModal();
+            showToast('❌ FlameCoins insufficienti!');
             return false;
         }
         this.balance -= amount;
-        this.transactions.unshift({
-            type: 'debit',
-            amount: -amount,
-            description: description,
-            timestamp: new Date()
-        });
-        await this.saveWallet();
-        this.updateUI();
+        this.transactions.unshift({type: 'debit', amount: -amount, description, date: new Date().toISOString()});
+        await this.saveToFirebase();
         return true;
     },
     
+    async saveToFirebase() {
+        const user = FlameAuth.currentUser;
+        if (!user) return;
+        await firebase.firestore().collection('users').doc(user.uid).update({
+            flameCoins: this.balance,
+            coinTransactions: this.transactions.slice(0, 50)
+        });
+    },
+    
     showWalletPanel() {
-        // Remove any existing modals
-        document.querySelectorAll('.wallet-modal-beautiful').forEach(m => m.remove());
+        // Remove existing modals
+        document.querySelectorAll('.fm-wallet-overlay').forEach(m => m.remove());
         
-        const modal = document.createElement('div');
-        modal.className = 'wallet-modal-beautiful';
+        const overlay = document.createElement('div');
+        overlay.className = 'fm-wallet-overlay';
+        overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:10000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(10px);animation:fadeIn 0.3s ease;';
         
-        modal.innerHTML = `
-            <div class="wallet-content-beautiful">
-                <button class="wallet-close-btn" onclick="this.closest('.wallet-modal-beautiful').remove()">×</button>
+        const recentTx = this.transactions.slice(0, 5).map(tx => `
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 15px;background:rgba(255,255,255,0.05);border-radius:10px;margin-bottom:8px;">
+                <span style="color:#ccc;font-size:13px;">${tx.description}</span>
+                <span style="color:${tx.amount > 0 ? '#00b894' : '#e74c3c'};font-weight:700;">${tx.amount > 0 ? '+' : ''}${tx.amount}</span>
+            </div>
+        `).join('') || '<div style="color:#888;text-align:center;padding:20px;">Nessuna transazione</div>';
+        
+        overlay.innerHTML = `
+            <div style="background:linear-gradient(145deg, #1a1a2e 0%, #16213e 50%, #0f0f23 100%);border-radius:24px;width:90%;max-width:400px;max-height:85vh;overflow:hidden;box-shadow:0 25px 80px rgba(0,0,0,0.5);position:relative;animation:slideUp 0.4s ease;">
                 
-                <div class="wallet-header-beautiful">
-                    <div class="wallet-coin-icon">💰</div>
-                    <h2 style="color:#fff;margin:0 0 5px 0;font-size:22px;font-weight:700;position:relative;">Il Tuo Wallet</h2>
-                    <div class="wallet-balance-box">
-                        <div class="wallet-balance-number">
-                            <span style="font-size:28px;">🔥</span>
-                            <span>${this.balance}</span>
+                <button onclick="this.closest('.fm-wallet-overlay').remove()" style="position:absolute;top:15px;right:15px;width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.1);border:none;color:#fff;font-size:24px;cursor:pointer;z-index:10;transition:all 0.3s;">×</button>
+                
+                <div style="background:linear-gradient(135deg, #f093fb 0%, #f5576c 100%);padding:30px 25px;text-align:center;">
+                    <div style="font-size:50px;margin-bottom:10px;animation:bounce 2s infinite;">💰</div>
+                    <h2 style="color:#fff;margin:0 0 15px 0;font-size:22px;font-weight:700;text-shadow:0 2px 10px rgba(0,0,0,0.3);">Il Tuo Wallet</h2>
+                    <div style="background:rgba(0,0,0,0.3);border-radius:20px;padding:20px;backdrop-filter:blur(10px);border:2px solid rgba(255,255,255,0.2);">
+                        <div style="display:flex;align-items:center;justify-content:center;gap:10px;">
+                            <span style="font-size:36px;">🔥</span>
+                            <span style="font-size:42px;font-weight:800;color:#fff;text-shadow:0 0 20px rgba(255,200,0,0.5);">${this.balance}</span>
                         </div>
-                        <div class="wallet-balance-label">FlameCoins</div>
+                        <div style="color:rgba(255,255,255,0.8);font-size:14px;margin-top:5px;">FlameCoins disponibili</div>
                     </div>
                 </div>
                 
-                <div class="wallet-body-beautiful">
-                    <button class="wallet-buy-btn" onclick="document.querySelector('.wallet-modal-beautiful').remove(); WalletSystem.showBuyModal();">
-                        <span style="font-size:20px;">✨</span>
+                <div style="padding:20px;overflow-y:auto;max-height:calc(85vh - 250px);">
+                    <button onclick="document.querySelector('.fm-wallet-overlay').remove(); WalletSystem.showBuyModal();" style="width:100%;padding:16px;background:linear-gradient(135deg, #00b894 0%, #00cec9 100%);border:none;border-radius:15px;color:#fff;font-size:16px;font-weight:700;cursor:pointer;margin-bottom:20px;box-shadow:0 8px 25px rgba(0,184,148,0.4);display:flex;align-items:center;justify-content:center;gap:10px;transition:transform 0.3s;">
+                        <span style="font-size:22px;">✨</span>
                         Acquista FlameCoins
                     </button>
                     
-                    <div class="wallet-section">
-                        <h3 class="wallet-section-title">
-                            <span>📜</span> Transazioni Recenti
+                    <div style="margin-bottom:15px;">
+                        <h3 style="color:#f5576c;font-size:14px;font-weight:600;margin:0 0 12px 0;display:flex;align-items:center;gap:8px;">
+                            <span style="font-size:16px;">💎</span> Cosa puoi fare
                         </h3>
-                        ${this.transactions.slice(0, 10).map(t => `
-                            <div class="wallet-transaction">
-                                <div>
-                                    <div style="color:#fff;font-size:14px;font-weight:500;">${t.description}</div>
-                                    <div style="color:rgba(255,255,255,0.5);font-size:12px;">${this.formatDate(t.timestamp)}</div>
-                                </div>
-                                <div style="color:${t.amount > 0 ? '#00b894' : '#ff6b6b'};font-weight:700;font-size:18px;">
-                                    ${t.amount > 0 ? '+' : ''}${t.amount}
-                                </div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                            <div style="background:linear-gradient(135deg, rgba(255,107,107,0.2) 0%, rgba(255,107,107,0.1) 100%);border-radius:12px;padding:15px;text-align:center;border:1px solid rgba(255,107,107,0.3);">
+                                <div style="font-size:24px;margin-bottom:5px;">🎁</div>
+                                <div style="color:#ff6b6b;font-size:12px;font-weight:600;">Regali</div>
                             </div>
-                        `).join('')}
-                        ${this.transactions.length === 0 ? '<p style="color:rgba(255,255,255,0.4);text-align:center;padding:20px;">Nessuna transazione ancora</p>' : ''}
-                    </div>
-                    
-                    <div class="wallet-section">
-                        <h3 class="wallet-section-title">
-                            <span>✨</span> Usa i FlameCoins per:
-                        </h3>
-                        <div class="wallet-uses-grid">
-                            <div class="wallet-use-card" onclick="document.querySelector('.wallet-modal-beautiful').remove(); VirtualGifts.showGiftPicker();">
-                                <span class="wallet-use-icon">🎁</span>
-                                <span class="wallet-use-label">Regali</span>
+                            <div style="background:linear-gradient(135deg, rgba(116,185,255,0.2) 0%, rgba(116,185,255,0.1) 100%);border-radius:12px;padding:15px;text-align:center;border:1px solid rgba(116,185,255,0.3);">
+                                <div style="font-size:24px;margin-bottom:5px;">🚀</div>
+                                <div style="color:#74b9ff;font-size:12px;font-weight:600;">Boost</div>
                             </div>
-                            <div class="wallet-use-card" onclick="document.querySelector('.wallet-modal-beautiful').remove(); showToast('⭐ SuperLike - Coming soon!');">
-                                <span class="wallet-use-icon">⭐</span>
-                                <span class="wallet-use-label">SuperLike</span>
+                            <div style="background:linear-gradient(135deg, rgba(253,203,110,0.2) 0%, rgba(253,203,110,0.1) 100%);border-radius:12px;padding:15px;text-align:center;border:1px solid rgba(253,203,110,0.3);">
+                                <div style="font-size:24px;margin-bottom:5px;">⭐</div>
+                                <div style="color:#fdcb6e;font-size:12px;font-weight:600;">SuperLike</div>
                             </div>
-                            <div class="wallet-use-card" onclick="document.querySelector('.wallet-modal-beautiful').remove(); showBoostModal();">
-                                <span class="wallet-use-icon">🚀</span>
-                                <span class="wallet-use-label">Boost</span>
-                            </div>
-                            <div class="wallet-use-card" onclick="document.querySelector('.wallet-modal-beautiful').remove(); showToast('👀 Chi ti ha likato - Coming soon!');">
-                                <span class="wallet-use-icon">👀</span>
-                                <span class="wallet-use-label">Chi ti ha likato</span>
+                            <div style="background:linear-gradient(135deg, rgba(162,155,254,0.2) 0%, rgba(162,155,254,0.1) 100%);border-radius:12px;padding:15px;text-align:center;border:1px solid rgba(162,155,254,0.3);">
+                                <div style="font-size:24px;margin-bottom:5px;">👀</div>
+                                <div style="color:#a29bfe;font-size:12px;font-weight:600;">Chi ti ha visto</div>
                             </div>
                         </div>
+                    </div>
+                    
+                    <div>
+                        <h3 style="color:#f5576c;font-size:14px;font-weight:600;margin:0 0 12px 0;display:flex;align-items:center;gap:8px;">
+                            <span style="font-size:16px;">📜</span> Transazioni recenti
+                        </h3>
+                        ${recentTx}
                     </div>
                 </div>
             </div>
         `;
         
-        document.body.appendChild(modal);
-        modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+        // Click outside to close
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) overlay.remove();
+        });
+        
+        document.body.appendChild(overlay);
     },
     
     showBuyModal() {
-        // Remove any existing modals
-        document.querySelectorAll('.fm-wallet-modal').forEach(m => m.remove());
+        document.querySelectorAll('.fm-wallet-overlay').forEach(m => m.remove());
         
-        const modal = document.createElement('div');
-        modal.className = 'fm-wallet-modal';
-        modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.85);display:flex;justify-content:center;align-items:center;z-index:99999;';
+        const overlay = document.createElement('div');
+        overlay.className = 'fm-wallet-overlay';
+        overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:10000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(10px);';
         
-        modal.innerHTML = `
-            <div style="background:linear-gradient(145deg,#1a1a2e,#16213e);border-radius:20px;padding:25px;max-width:450px;width:90%;max-height:85vh;overflow-y:auto;position:relative;border:2px solid rgba(255,107,107,0.3);box-shadow:0 20px 60px rgba(0,0,0,0.5);">
-                <button onclick="this.closest('.fm-wallet-modal').remove()" style="position:absolute;top:10px;right:10px;background:rgba(255,255,255,0.1);border:none;width:32px;height:32px;border-radius:50%;color:#fff;cursor:pointer;font-size:18px;">×</button>
-                
-                <div style="text-align:center;margin-bottom:20px;">
-                    <div style="font-size:48px;margin-bottom:10px;">🛒</div>
-                    <h2 style="color:#fff;margin:0 0 5px 0;font-size:24px;">Acquista FlameCoins</h2>
-                    <p style="color:rgba(255,255,255,0.6);margin:0;">Saldo attuale: <span style="color:#ff6b6b;font-weight:bold;">🔥 ${this.balance}</span></p>
-                </div>
-                
-                <div style="display:flex;flex-direction:column;gap:12px;" id="coin-packages">
-                    ${this.coinPackages.map(pkg => `
-                        <div onclick="WalletSystem.buyCoins('${pkg.id}')" style="background:${pkg.popular ? 'linear-gradient(135deg,#ff6b6b,#ff8e53)' : 'rgba(255,255,255,0.05)'};padding:15px 20px;border-radius:12px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;border:${pkg.popular ? 'none' : '1px solid rgba(255,255,255,0.1)'};transition:transform 0.2s;position:relative;${pkg.popular ? '' : ''}" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
-                            ${pkg.popular ? '<div style="position:absolute;top:-8px;right:10px;background:#ffd700;color:#000;padding:2px 10px;border-radius:10px;font-size:10px;font-weight:bold;">⭐ POPOLARE</div>' : ''}
-                            <div>
-                                <div style="color:#fff;font-size:18px;font-weight:bold;">🔥 ${pkg.coins} ${pkg.bonus > 0 ? `<span style="color:#00b894;">+${pkg.bonus} BONUS</span>` : ''}</div>
-                                <div style="color:rgba(255,255,255,0.6);font-size:12px;">${pkg.coins + pkg.bonus} FlameCoins totali</div>
-                            </div>
-                            <div style="background:${pkg.popular ? 'rgba(0,0,0,0.2)' : 'rgba(255,107,107,0.2)'};padding:8px 15px;border-radius:8px;">
-                                <span style="color:#fff;font-weight:bold;font-size:18px;">€${pkg.price.toFixed(2)}</span>
-                            </div>
+        const packages = [
+            { coins: 100, price: 4.99, bonus: 0, popular: false },
+            { coins: 300, price: 9.99, bonus: 50, popular: true },
+            { coins: 500, price: 14.99, bonus: 100, popular: false },
+            { coins: 1000, price: 24.99, bonus: 250, popular: false },
+            { coins: 2500, price: 49.99, bonus: 750, popular: false }
+        ];
+        
+        const packagesHTML = packages.map(pkg => `
+            <div style="background:${pkg.popular ? 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)' : 'rgba(255,255,255,0.08)'};border-radius:16px;padding:18px;position:relative;border:${pkg.popular ? 'none' : '1px solid rgba(255,255,255,0.1)'};transition:all 0.3s;">
+                ${pkg.popular ? '<div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:#00b894;color:#fff;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;">⭐ PIÙ POPOLARE</div>' : ''}
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <div>
+                        <div style="display:flex;align-items:center;gap:6px;">
+                            <span style="font-size:24px;">🔥</span>
+                            <span style="color:#fff;font-size:22px;font-weight:800;">${pkg.coins}</span>
                         </div>
-                    `).join('')}
+                        ${pkg.bonus > 0 ? `<div style="color:#00b894;font-size:12px;font-weight:600;margin-top:4px;">+${pkg.bonus} BONUS!</div>` : '<div style="height:20px;"></div>'}
+                    </div>
+                    <button onclick="WalletSystem.purchaseCoins(${pkg.coins + pkg.bonus}, ${pkg.price})" style="background:${pkg.popular ? 'rgba(0,0,0,0.3)' : 'linear-gradient(135deg, #f5576c 0%, #f093fb 100%)'};border:none;color:#fff;padding:12px 24px;border-radius:25px;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 4px 15px rgba(0,0,0,0.3);">
+                        €${pkg.price.toFixed(2)}
+                    </button>
+                </div>
+            </div>
+        `).join('');
+        
+        overlay.innerHTML = `
+            <div style="background:linear-gradient(145deg, #1a1a2e 0%, #16213e 50%, #0f0f23 100%);border-radius:24px;width:90%;max-width:400px;max-height:85vh;overflow:hidden;box-shadow:0 25px 80px rgba(0,0,0,0.5);position:relative;">
+                <button onclick="this.closest('.fm-wallet-overlay').remove()" style="position:absolute;top:15px;right:15px;width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.1);border:none;color:#fff;font-size:24px;cursor:pointer;z-index:10;">×</button>
+                
+                <div style="background:linear-gradient(135deg, #00b894 0%, #00cec9 100%);padding:25px;text-align:center;">
+                    <div style="font-size:45px;margin-bottom:8px;">✨</div>
+                    <h2 style="color:#fff;margin:0;font-size:22px;font-weight:700;">Acquista FlameCoins</h2>
+                    <p style="color:rgba(255,255,255,0.8);margin:8px 0 0 0;font-size:14px;">Saldo attuale: <strong>${this.balance}</strong> 🔥</p>
                 </div>
                 
-                <div id="paypal-container" style="margin-top:20px;display:none;">
-                    <div id="paypal-button-coins" style="min-height:150px;"></div>
+                <div style="padding:20px;display:flex;flex-direction:column;gap:12px;overflow-y:auto;max-height:calc(85vh - 150px);">
+                    ${packagesHTML}
+                    
+                    <button onclick="this.closest('.fm-wallet-overlay').remove(); WalletSystem.showWalletPanel();" style="width:100%;padding:14px;background:rgba(255,255,255,0.1);border:none;border-radius:12px;color:#fff;cursor:pointer;margin-top:10px;font-size:14px;">
+                        ← Torna al Wallet
+                    </button>
                 </div>
-                
-                <p style="color:rgba(255,255,255,0.4);font-size:11px;text-align:center;margin-top:15px;">
-                    🔒 Pagamento sicuro con PayPal
-                </p>
             </div>
         `;
         
-        document.body.appendChild(modal);
-        modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) overlay.remove();
+        });
+        
+        document.body.appendChild(overlay);
     },
     
-    async buyCoins(packageId) {
-        const pkg = this.coinPackages.find(p => p.id === packageId);
-        if (!pkg) return;
+    async purchaseCoins(amount, price) {
+        document.querySelectorAll('.fm-wallet-overlay').forEach(m => m.remove());
         
-        const totalCoins = pkg.coins + pkg.bonus;
+        const overlay = document.createElement('div');
+        overlay.className = 'fm-wallet-overlay';
+        overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:10000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(10px);';
         
-        // Update modal to show PayPal
-        const packagesDiv = document.getElementById('coin-packages');
-        const paypalContainer = document.getElementById('paypal-container');
+        overlay.innerHTML = `
+            <div style="background:linear-gradient(145deg, #1a1a2e 0%, #16213e 50%, #0f0f23 100%);border-radius:24px;width:90%;max-width:400px;padding:30px;text-align:center;">
+                <div style="font-size:60px;margin-bottom:15px;">🔥</div>
+                <h2 style="color:#fff;margin:0 0 10px 0;">${amount} FlameCoins</h2>
+                <p style="color:#00b894;font-size:24px;font-weight:700;margin:0 0 25px 0;">€${price.toFixed(2)}</p>
+                <div id="paypal-coins-container" style="min-height:150px;"></div>
+                <button onclick="this.closest('.fm-wallet-overlay').remove(); WalletSystem.showBuyModal();" style="width:100%;padding:14px;background:rgba(255,255,255,0.1);border:none;border-radius:12px;color:#fff;cursor:pointer;margin-top:15px;">← Annulla</button>
+            </div>
+        `;
         
-        if (packagesDiv) packagesDiv.style.display = 'none';
-        if (paypalContainer) {
-            paypalContainer.style.display = 'block';
-            paypalContainer.innerHTML = `
-                <div style="text-align:center;margin-bottom:15px;">
-                    <p style="color:#fff;font-size:16px;">Stai acquistando:</p>
-                    <p style="color:#ff6b6b;font-size:24px;font-weight:bold;">🔥 ${totalCoins} FlameCoins</p>
-                    <p style="color:#fff;font-size:20px;">€${pkg.price.toFixed(2)}</p>
-                </div>
-                <div id="paypal-button-coins"></div>
-                <button onclick="WalletSystem.showBuyModal()" style="width:100%;padding:12px;background:rgba(255,255,255,0.1);border:none;border-radius:8px;color:#fff;cursor:pointer;margin-top:15px;">← Torna ai pacchetti</button>
-            `;
-        }
+        document.body.appendChild(overlay);
         
         // Initialize PayPal
-        if (typeof paypal !== 'undefined') {
-            try {
+        setTimeout(() => {
+            if (window.paypal) {
                 paypal.Buttons({
                     style: { layout: 'vertical', color: 'gold', shape: 'pill', label: 'pay' },
                     createOrder: (data, actions) => {
                         return actions.order.create({
-                            purchase_units: [{
-                                description: 'FlameMatch - ' + totalCoins + ' FlameCoins',
-                                amount: { value: pkg.price.toFixed(2), currency_code: 'EUR' }
+                            purchase_units: [{ 
+                                description: `${amount} FlameCoins - FlameMatch`,
+                                amount: { value: price.toFixed(2), currency_code: 'EUR' }
                             }]
                         });
                     },
                     onApprove: async (data, actions) => {
                         const order = await actions.order.capture();
-                        await this.addCoins(totalCoins, 'Acquisto ' + totalCoins + ' FlameCoins (PayPal: ' + order.id + ')');
-                        document.querySelector('.fm-wallet-modal').remove();
-                        showNotification('✅ Acquisto completato! +' + totalCoins + ' FlameCoins', 'success');
+                        await WalletSystem.addCoins(amount, `✨ Acquistato pacchetto ${amount} coins`);
+                        document.querySelector('.fm-wallet-overlay')?.remove();
+                        showToast(`🎉 Acquistati ${amount} FlameCoins!`);
+                        WalletSystem.showWalletPanel();
                     },
                     onError: (err) => {
                         console.error('PayPal error:', err);
-                        showNotification('Errore nel pagamento. Riprova.', 'error');
+                        showToast('❌ Errore pagamento');
                     }
-                }).render('#paypal-button-coins');
-            } catch(e) {
-                console.error('PayPal init error:', e);
-                showNotification('Errore PayPal. Ricarica la pagina.', 'error');
+                }).render('#paypal-coins-container');
+            } else {
+                document.getElementById('paypal-coins-container').innerHTML = '<p style="color:#e74c3c;">PayPal non disponibile</p>';
             }
-        } else {
-            showNotification('PayPal non disponibile. Ricarica la pagina.', 'error');
-        }
-    },
-    
-    formatDate(timestamp) {
-        if (!timestamp) return '';
-        const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-        return date.toLocaleDateString('it-IT', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+        }, 100);
     }
 };
 
-
-// ============================================
-// 🎁 VIRTUAL GIFTS SYSTEM - FIXED WITH INLINE STYLES
-// ============================================
+// Global function for wallet button
+function openWallet() {
+    WalletSystem.showWalletPanel();
+}
 
 const VirtualGifts = {
     gifts: [
