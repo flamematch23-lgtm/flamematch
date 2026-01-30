@@ -7900,65 +7900,72 @@ const WalletSystem = {
     
     showWalletPanel() {
         // Remove any existing modals
-        document.querySelectorAll('.fm-wallet-modal').forEach(m => m.remove());
+        document.querySelectorAll('.wallet-modal-beautiful').forEach(m => m.remove());
         
         const modal = document.createElement('div');
-        modal.className = 'fm-wallet-modal';
-        modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.85);display:flex;justify-content:center;align-items:center;z-index:99999;';
+        modal.className = 'wallet-modal-beautiful';
         
         modal.innerHTML = `
-            <div style="background:linear-gradient(145deg,#1a1a2e,#16213e);border-radius:20px;padding:25px;max-width:400px;width:90%;max-height:80vh;overflow-y:auto;position:relative;border:2px solid rgba(255,107,107,0.3);box-shadow:0 20px 60px rgba(0,0,0,0.5);">
-                <button onclick="this.closest('.fm-wallet-modal').remove()" style="position:absolute;top:10px;right:10px;background:rgba(255,255,255,0.1);border:none;width:32px;height:32px;border-radius:50%;color:#fff;cursor:pointer;font-size:18px;">×</button>
+            <div class="wallet-content-beautiful">
+                <button class="wallet-close-btn" onclick="this.closest('.wallet-modal-beautiful').remove()">×</button>
                 
-                <div style="text-align:center;margin-bottom:20px;">
-                    <div style="font-size:48px;margin-bottom:10px;">💰</div>
-                    <h2 style="color:#fff;margin:0 0 5px 0;font-size:24px;">Il Tuo Wallet</h2>
-                    <div style="background:linear-gradient(135deg,#ff6b6b,#ff8e53);padding:15px 30px;border-radius:15px;display:inline-block;margin:10px 0;">
-                        <span style="font-size:36px;font-weight:bold;color:#fff;">🔥 ${this.balance}</span>
-                        <div style="color:rgba(255,255,255,0.9);font-size:14px;">FlameCoins</div>
+                <div class="wallet-header-beautiful">
+                    <div class="wallet-coin-icon">💰</div>
+                    <h2 style="color:#fff;margin:0 0 5px 0;font-size:22px;font-weight:700;position:relative;">Il Tuo Wallet</h2>
+                    <div class="wallet-balance-box">
+                        <div class="wallet-balance-number">
+                            <span style="font-size:28px;">🔥</span>
+                            <span>${this.balance}</span>
+                        </div>
+                        <div class="wallet-balance-label">FlameCoins</div>
                     </div>
                 </div>
                 
-                <button onclick="document.querySelector('.fm-wallet-modal').remove(); WalletSystem.showBuyModal();" style="width:100%;padding:15px;background:linear-gradient(135deg,#00b894,#00cec9);border:none;border-radius:12px;color:#fff;font-size:16px;font-weight:bold;cursor:pointer;margin-bottom:20px;display:flex;align-items:center;justify-content:center;gap:8px;">
-                    <span>➕</span> Acquista FlameCoins
-                </button>
-                
-                <div style="background:rgba(255,255,255,0.05);border-radius:12px;padding:15px;">
-                    <h3 style="color:#ff6b6b;margin:0 0 15px 0;font-size:16px;">📜 Transazioni Recenti</h3>
-                    <div style="max-height:200px;overflow-y:auto;">
+                <div class="wallet-body-beautiful">
+                    <button class="wallet-buy-btn" onclick="document.querySelector('.wallet-modal-beautiful').remove(); WalletSystem.showBuyModal();">
+                        <span style="font-size:20px;">✨</span>
+                        Acquista FlameCoins
+                    </button>
+                    
+                    <div class="wallet-section">
+                        <h3 class="wallet-section-title">
+                            <span>📜</span> Transazioni Recenti
+                        </h3>
                         ${this.transactions.slice(0, 10).map(t => `
-                            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:rgba(255,255,255,0.03);border-radius:8px;margin-bottom:8px;">
+                            <div class="wallet-transaction">
                                 <div>
-                                    <div style="color:#fff;font-size:14px;">${t.description}</div>
+                                    <div style="color:#fff;font-size:14px;font-weight:500;">${t.description}</div>
                                     <div style="color:rgba(255,255,255,0.5);font-size:12px;">${this.formatDate(t.timestamp)}</div>
                                 </div>
-                                <div style="color:${t.amount > 0 ? '#00b894' : '#ff6b6b'};font-weight:bold;font-size:16px;">
+                                <div style="color:${t.amount > 0 ? '#00b894' : '#ff6b6b'};font-weight:700;font-size:18px;">
                                     ${t.amount > 0 ? '+' : ''}${t.amount}
                                 </div>
                             </div>
                         `).join('')}
-                        ${this.transactions.length === 0 ? '<p style="color:rgba(255,255,255,0.5);text-align:center;">Nessuna transazione</p>' : ''}
+                        ${this.transactions.length === 0 ? '<p style="color:rgba(255,255,255,0.4);text-align:center;padding:20px;">Nessuna transazione ancora</p>' : ''}
                     </div>
-                </div>
-                
-                <div style="margin-top:20px;background:rgba(255,255,255,0.05);border-radius:12px;padding:15px;">
-                    <h3 style="color:#ff6b6b;margin:0 0 15px 0;font-size:16px;">✨ Usa i FlameCoins per:</h3>
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-                        <div style="background:rgba(255,107,107,0.1);padding:12px;border-radius:10px;text-align:center;">
-                            <div style="font-size:24px;">🎁</div>
-                            <div style="color:#fff;font-size:12px;">Regali</div>
-                        </div>
-                        <div style="background:rgba(255,107,107,0.1);padding:12px;border-radius:10px;text-align:center;">
-                            <div style="font-size:24px;">⭐</div>
-                            <div style="color:#fff;font-size:12px;">SuperLike</div>
-                        </div>
-                        <div style="background:rgba(255,107,107,0.1);padding:12px;border-radius:10px;text-align:center;">
-                            <div style="font-size:24px;">🚀</div>
-                            <div style="color:#fff;font-size:12px;">Boost</div>
-                        </div>
-                        <div style="background:rgba(255,107,107,0.1);padding:12px;border-radius:10px;text-align:center;">
-                            <div style="font-size:24px;">👀</div>
-                            <div style="color:#fff;font-size:12px;">Chi ti ha likato</div>
+                    
+                    <div class="wallet-section">
+                        <h3 class="wallet-section-title">
+                            <span>✨</span> Usa i FlameCoins per:
+                        </h3>
+                        <div class="wallet-uses-grid">
+                            <div class="wallet-use-card" onclick="document.querySelector('.wallet-modal-beautiful').remove(); VirtualGifts.showGiftPicker();">
+                                <span class="wallet-use-icon">🎁</span>
+                                <span class="wallet-use-label">Regali</span>
+                            </div>
+                            <div class="wallet-use-card" onclick="document.querySelector('.wallet-modal-beautiful').remove(); showToast('⭐ SuperLike - Coming soon!');">
+                                <span class="wallet-use-icon">⭐</span>
+                                <span class="wallet-use-label">SuperLike</span>
+                            </div>
+                            <div class="wallet-use-card" onclick="document.querySelector('.wallet-modal-beautiful').remove(); showBoostModal();">
+                                <span class="wallet-use-icon">🚀</span>
+                                <span class="wallet-use-label">Boost</span>
+                            </div>
+                            <div class="wallet-use-card" onclick="document.querySelector('.wallet-modal-beautiful').remove(); showToast('👀 Chi ti ha likato - Coming soon!');">
+                                <span class="wallet-use-icon">👀</span>
+                                <span class="wallet-use-label">Chi ti ha likato</span>
+                            </div>
                         </div>
                     </div>
                 </div>
