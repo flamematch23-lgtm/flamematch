@@ -491,6 +491,7 @@ function showLimitReachedModal(type) {
         modal.id = 'limitModal';
         modal.className = 'fullscreen-modal';
         document.body.appendChild(modal);
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
     }
     
     modal.innerHTML = `
@@ -585,6 +586,7 @@ function openPremiumModal() {
         modal.id = 'premiumModal';
         modal.className = 'fullscreen-modal';
         document.body.appendChild(modal);
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
     }
     
     const currentPlan = userPremiumData.plan;
@@ -889,6 +891,7 @@ function showPaymentModal(planName, price) {
             modal.id = 'paymentModal';
             modal.className = 'fullscreen-modal';
             document.body.appendChild(modal);
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
         }
         
         const period = billingCycle === 'monthly' ? 'mese' : 'anno';
@@ -1152,6 +1155,7 @@ function showLikesModal(likes) {
         modal.id = 'likesModal';
         modal.className = 'fullscreen-modal';
         document.body.appendChild(modal);
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
     }
     
     modal.innerHTML = `
@@ -1279,6 +1283,7 @@ function openPassport() {
         modal.id = 'passportModal';
         modal.className = 'fullscreen-modal';
         document.body.appendChild(modal);
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
     }
     
     const popularCities = [
@@ -1447,6 +1452,7 @@ function showVisitorsModal(visitors) {
         modal.id = 'visitorsModal';
         modal.className = 'fullscreen-modal';
         document.body.appendChild(modal);
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
     }
     
     modal.innerHTML = `
@@ -2379,6 +2385,7 @@ function openFilters() {
         modal.id = 'filtersModal';
         modal.className = 'fullscreen-modal';
         document.body.appendChild(modal);
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
     }
     
     modal.innerHTML = `
@@ -2674,6 +2681,7 @@ function showEsplora(e) {
             </div>
         `;
         document.body.appendChild(modal);
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
     }
     modal.classList.add('show');
 }
@@ -3000,6 +3008,7 @@ function showBlurredLikes() {
         modal.id = 'blurredLikesModal';
         modal.className = 'fullscreen-modal';
         document.body.appendChild(modal);
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
     }
     
     modal.innerHTML = `
@@ -3154,6 +3163,7 @@ function openProfileSettings() {
             </div>
         `;
         document.body.appendChild(modal);
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
     } else {
         // Aggiorna info se esistente
         const photo = modal.querySelector('.profile-main-photo');
@@ -3187,6 +3197,7 @@ function editPhotos() {
         modal.id = 'editPhotosModal';
         modal.className = 'fullscreen-modal';
         document.body.appendChild(modal);
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
     }
     
     const photoSlots = [];
@@ -3429,6 +3440,7 @@ function editProfile() {
         modal.id = 'editProfileModal';
         modal.className = 'fullscreen-modal';
         document.body.appendChild(modal);
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
     }
     
     const profile = currentUserProfile || {};
@@ -3644,6 +3656,7 @@ function openVerifyProfile() {
         modal.id = 'verifyProfileModal';
         modal.className = 'fullscreen-modal verify-modal';
         document.body.appendChild(modal);
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
     }
     
     modal.innerHTML = `
@@ -4187,6 +4200,7 @@ function showPrivacy() {
             modal.id = 'privacyModal';
             modal.className = 'fullscreen-modal';
             document.body.appendChild(modal);
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
         }
         
         modal.innerHTML = `
@@ -4413,6 +4427,7 @@ function reportUser(userId, userName) {
         modal.id = 'reportModal';
         modal.className = 'fullscreen-modal report-modal';
         document.body.appendChild(modal);
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
     }
     
     modal.innerHTML = `
@@ -4543,6 +4558,7 @@ function confirmDeleteAccount() {
         modal.id = 'deleteAccountModal';
         modal.className = 'fullscreen-modal delete-modal';
         document.body.appendChild(modal);
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
     }
     
     modal.innerHTML = `
@@ -4725,6 +4741,7 @@ function showNotificationSettings() {
             modal.id = 'notificationModal';
             modal.className = 'fullscreen-modal';
             document.body.appendChild(modal);
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
         }
         
         modal.innerHTML = `
@@ -4863,6 +4880,7 @@ function showBoostModal() {
         modal.id = 'boostModal';
         modal.className = 'fullscreen-modal boost-modal';
         document.body.appendChild(modal);
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
     }
     
     modal.innerHTML = `
@@ -5145,6 +5163,7 @@ async function openUserProfile(userId) {
             modal.id = 'userProfileModal';
             modal.className = 'modal-overlay';
             document.body.appendChild(modal);
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
         }
         
         modal.innerHTML = `
@@ -5417,6 +5436,7 @@ function openCreatePostModal() {
         modal.id = 'createPostModal';
         modal.className = 'modal-overlay';
         document.body.appendChild(modal);
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
     }
     
     modal.innerHTML = `
@@ -5598,6 +5618,7 @@ async function openPostDetail(postId, postData) {
         modal.id = 'postDetailModal';
         modal.className = 'modal-overlay';
         document.body.appendChild(modal);
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
     }
     
     // Carica dati autore
@@ -6610,6 +6631,7 @@ function showLocationOptions() {
         `;
         modal.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); display: flex; align-items: center; justify-content: center; z-index: 9999;';
         document.body.appendChild(modal);
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
         
         window.locationChoice = (choice) => {
             resolve(choice);
@@ -6718,6 +6740,7 @@ async function setLocationManually() {
     `;
     modal.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); display: flex; align-items: center; justify-content: center; z-index: 9999;';
     document.body.appendChild(modal);
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
     
     // Focus sull'input
     setTimeout(() => document.getElementById('manualCity').focus(), 100);
@@ -7314,6 +7337,7 @@ const VideoDate = {
             </div>
         `;
         document.body.appendChild(modal);
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
     },
     
     // Extend call
@@ -7384,6 +7408,7 @@ const VideoDate = {
             </div>
         `;
         document.body.appendChild(modal);
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
     },
     
     // Toggle mute
@@ -7434,6 +7459,7 @@ const VideoDate = {
             </div>
         `;
         document.body.appendChild(modal);
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
         
         // Play ringtone
         // const ringtone = new Audio('/sounds/ringtone.mp3');
@@ -7508,6 +7534,7 @@ const WelcomeExperience = {
             </div>
         `;
         document.body.appendChild(modal);
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
         
         // Attach close handler
         const closeBtn = document.getElementById('welcomeCloseBtn');
@@ -7881,6 +7908,8 @@ const WalletSystem = {
     },
     
     showBuyModal() {
+        // Remove existing wallet modals first
+        document.querySelectorAll(".wallet-modal").forEach(m => m.remove());
         const modal = document.createElement('div');
         modal.className = 'wallet-modal';
         modal.innerHTML = `
@@ -7912,6 +7941,7 @@ const WalletSystem = {
             </div>
         `;
         document.body.appendChild(modal);
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
         
         setTimeout(() => modal.classList.add('show'), 10);
     },
@@ -7962,6 +7992,8 @@ const WalletSystem = {
     },
     
     showWalletPanel() {
+        // Remove existing wallet modals first
+        document.querySelectorAll(".wallet-modal").forEach(m => m.remove());
         const modal = document.createElement('div');
         modal.className = 'wallet-modal';
         modal.innerHTML = `
@@ -8025,6 +8057,7 @@ const WalletSystem = {
             </div>
         `;
         document.body.appendChild(modal);
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
         setTimeout(() => modal.classList.add('show'), 10);
     },
     
@@ -8177,6 +8210,7 @@ const VirtualGifts = {
             </div>
         `;
         document.body.appendChild(modal);
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
         
         // Tab switching
         modal.querySelectorAll('.gift-tab').forEach(tab => {
@@ -8269,6 +8303,7 @@ const VirtualGifts = {
                 </div>
             `;
             document.body.appendChild(modal);
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
             
             // Tab switching
             modal.querySelectorAll('.history-tab').forEach(tab => {
