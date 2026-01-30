@@ -1,0 +1,38 @@
+{
+  "project_info": {
+    "project_number": "972526979658",
+    "project_id": "flamematch-abfe1",
+    "storage_bucket": "flamematch-abfe1.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:972526979658:android:c37e8db2b9878eaa52b4b3",
+        "android_client_info": {
+          "package_name": "com.flamematch.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "972526979658-hk101ak77arpak5v5oi6ji6hv2kdfnqh.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.flamematch.app",
+            "certificate_hash": "ee8349db982648a1336757f3ef62826a4ca64f7c"
+          }
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAlfAWchgu9DrRwm84_Xyvq-EvRPDNtsfA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
