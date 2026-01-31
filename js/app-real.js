@@ -177,6 +177,8 @@ function checkAuth() {
                         showMe: 'all',
                         ageRange: { min: 18, max: 50 },
                         maxDistance: 50,
+    showVerifiedOnly: false
+};
                         notifications: true
                     }
                 });
@@ -2396,6 +2398,8 @@ let currentFilters = {
     ageMin: 18,
     ageMax: 55,
     maxDistance: 50,
+    showVerifiedOnly: false
+};
 function openFilters() {
     document.querySelectorAll('.fm-filters-overlay').forEach(m => m.remove());
     
