@@ -304,15 +304,33 @@ async function savePremiumData() {
 // Reset giornaliero swipes e super likes
 async function checkDailyReset() {
     const now = new Date();
-    const lastReset = userPremiumData.lastSwipeReset;
+    let lastReset = userPremiumData.lastSwipeReset;
     
-    if (!lastReset || !isSameDay(lastReset, now)) {
+    // Convert Firestore Timestamp to Date if needed
+    if (lastReset && typeof lastReset.toDate === 'function') {
+        lastReset = lastReset.toDate();
+        userPremiumData.lastSwipeReset = lastReset;
+    }
+    
+    // Check if reset is needed
+    let needsReset = !lastReset;
+    
+    if (lastReset) {
+        try {
+            needsReset = !isSameDay(lastReset, now);
+        } catch (e) {
+            console.log('⚠️ Date comparison error, forcing reset:', e);
+            needsReset = true;
+        }
+    }
+    
+    if (needsReset) {
+        console.log('🔄 Reset giornaliero contatori (was:', userPremiumData.dailySuperLikesUsed, ')');
         userPremiumData.dailySwipesUsed = 0;
         userPremiumData.dailySuperLikesUsed = 0;
         userPremiumData.lastSwipeReset = now;
         userPremiumData.lastSuperLikeReset = now;
         await savePremiumData();
-        console.log('🔄 Reset giornaliero contatori');
     }
 }
 
@@ -330,14 +348,26 @@ async function checkMonthlyReset() {
 }
 
 function isSameDay(d1, d2) {
-    return d1.getFullYear() === d2.getFullYear() &&
-           d1.getMonth() === d2.getMonth() &&
-           d1.getDate() === d2.getDate();
+    if (!d1 || !d2) return false;
+    
+    // Handle Firestore Timestamps
+    const date1 = d1.toDate ? d1.toDate() : new Date(d1);
+    const date2 = d2.toDate ? d2.toDate() : new Date(d2);
+    
+    return date1.getFullYear() === date2.getFullYear() &&
+           date1.getMonth() === date2.getMonth() &&
+           date1.getDate() === date2.getDate();
 }
 
 function isSameMonth(d1, d2) {
-    return d1.getFullYear() === d2.getFullYear() &&
-           d1.getMonth() === d2.getMonth();
+    if (!d1 || !d2) return false;
+    
+    // Handle Firestore Timestamps
+    const date1 = d1.toDate ? d1.toDate() : new Date(d1);
+    const date2 = d2.toDate ? d2.toDate() : new Date(d2);
+    
+    return date1.getFullYear() === date2.getFullYear() &&
+           date1.getMonth() === date2.getMonth();
 }
 
 // Ottieni piano corrente dell'utente
@@ -362,15 +392,27 @@ function getRemainingSwipes() {
 // Verifica se utente può fare Super Like
 function canSuperLike() {
     const plan = getCurrentPlan();
+    console.log('👑 canSuperLike check - Plan:', userPremiumData.plan, 
+                '| Limit:', plan.dailySuperLikes, 
+                '| Used:', userPremiumData.dailySuperLikesUsed);
+    
+    // Platinum = unlimited
     if (plan.dailySuperLikes === Infinity) return true;
-    return userPremiumData.dailySuperLikesUsed < plan.dailySuperLikes;
+    
+    // Gold = 5 per day, Basic = 1 per day
+    const remaining = plan.dailySuperLikes - (userPremiumData.dailySuperLikesUsed || 0);
+    console.log('👑 Super Likes remaining:', remaining);
+    
+    return remaining > 0;
 }
 
 // Super Like rimanenti oggi
 function getRemainingSuperLikes() {
     const plan = getCurrentPlan();
     if (plan.dailySuperLikes === Infinity) return '∞';
-    return Math.max(0, plan.dailySuperLikes - userPremiumData.dailySuperLikesUsed);
+    const used = userPremiumData.dailySuperLikesUsed || 0;
+    const remaining = Math.max(0, plan.dailySuperLikes - used);
+    return remaining;
 }
 
 // Verifica se utente può usare Boost
@@ -484,6 +526,22 @@ function updateSuperLikeCounter() {
 // Mostra modal limite raggiunto
 function showLimitReachedModal(type) {
     const isSwipe = type === 'swipe';
+    const plan = getCurrentPlan();
+    
+    // Debug info
+    console.log('⚠️ showLimitReachedModal called:', {
+        type,
+        plan: userPremiumData.plan,
+        planName: plan.name,
+        dailySuperLikes: plan.dailySuperLikes,
+        dailySuperLikesUsed: userPremiumData.dailySuperLikesUsed,
+        dailySwipes: plan.dailySwipes,
+        dailySwipesUsed: userPremiumData.dailySwipesUsed
+    });
+    
+    const limit = isSwipe ? plan.dailySwipes : plan.dailySuperLikes;
+    const used = isSwipe ? userPremiumData.dailySwipesUsed : userPremiumData.dailySuperLikesUsed;
+    const remaining = limit === Infinity ? '∞' : Math.max(0, limit - used);
     
     let modal = document.getElementById('limitModal');
     if (!modal) {
@@ -509,9 +567,10 @@ function showLimitReachedModal(type) {
             
             <p style="color: #aaa; margin-bottom: 20px;">
                 ${isSwipe 
-                    ? `Hai usato tutti i tuoi ${getCurrentPlan().dailySwipes} swipe di oggi.` 
-                    : `Hai usato tutti i tuoi ${getCurrentPlan().dailySuperLikes} Super Like di oggi.`
+                    ? `Hai usato tutti i tuoi ${limit === Infinity ? 'swipe illimitati' : limit + ' swipe'} di oggi.` 
+                    : `Hai usato tutti i tuoi ${limit === Infinity ? 'super like illimitati' : limit + ' Super Like'} di oggi.`
                 }
+                <br><small style="color: #666;">(Usati: ${used}/${limit === Infinity ? '∞' : limit})</small>
             </p>
             
             <div style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 16px; margin-bottom: 20px;">
@@ -1240,7 +1299,7 @@ async function likeBackUser(userId) {
             // Carica dati utente per mostrare match
             const userDoc = await db.collection('users').doc(userId).get();
             if (userDoc.exists) {
-                showMatchPopup(userDoc.data());
+                showMatch(userDoc.data());
             }
         } else {
             showToast('❤️ Like inviato!', 'success');
@@ -3375,38 +3434,133 @@ function showBlurredLikes() {
         document.body.appendChild(modal);
     }
     
-    modal.innerHTML = `
-        <div class="modal-content" style="max-width: 450px; text-align: center;">
+    // Crea card fake con aspetto realistico
+    const fakeProfiles = [
+        { gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', icon: '👩', name: 'S***a', age: '2*' },
+        { gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', icon: '👱‍♀️', name: 'M***a', age: '2*' },
+        { gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', icon: '👩‍🦰', name: 'G***a', age: '2*' },
+        { gradient: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)', icon: '👧', name: 'L***a', age: '2*' },
+        { gradient: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)', icon: '👩‍🦱', name: 'E***a', age: '2*' },
+        { gradient: 'linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)', icon: '👱‍♀️', name: 'C***a', age: '2*' }
+    ];
+    
+    const cardsHtml = fakeProfiles.map(p => \`
+        <div style="
+            height: 180px;
+            background: \${p.gradient};
+            border-radius: 16px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        ">
+            <!-- Silhouette foto -->
+            <div style="
+                position: absolute;
+                top: 0; left: 0; right: 0; bottom: 40px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 4rem;
+                filter: blur(8px);
+                opacity: 0.7;
+            ">\${p.icon}</div>
+            
+            <!-- Icona cuore -->
+            <div style="
+                position: absolute;
+                top: 10px; right: 10px;
+                width: 32px; height: 32px;
+                background: rgba(255,75,110,0.9);
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                box-shadow: 0 4px 12px rgba(255,75,110,0.5);
+                animation: pulse 2s ease-in-out infinite;
+            ">
+                <span style="color: white; font-size: 14px;">❤️</span>
+            </div>
+            
+            <!-- Info utente blurrate -->
+            <div style="
+                position: absolute;
+                bottom: 0; left: 0; right: 0;
+                padding: 12px;
+                background: linear-gradient(transparent, rgba(0,0,0,0.8));
+            ">
+                <div style="
+                    font-weight: bold;
+                    font-size: 16px;
+                    color: white;
+                    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+                    filter: blur(3px);
+                ">\${p.name}, \${p.age}</div>
+                <div style="
+                    font-size: 12px;
+                    color: rgba(255,255,255,0.7);
+                    filter: blur(2px);
+                ">📍 Vicino a te</div>
+            </div>
+            
+            <!-- Overlay lock -->
+            <div style="
+                position: absolute;
+                top: 50%; left: 50%;
+                transform: translate(-50%, -50%);
+                width: 50px; height: 50px;
+                background: rgba(0,0,0,0.5);
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                backdrop-filter: blur(5px);
+            ">
+                <span style="font-size: 24px;">🔒</span>
+            </div>
+        </div>
+    \`).join('');
+    
+    modal.innerHTML = \`
+        <style>
+            @keyframes pulse {
+                0%, 100% { transform: scale(1); }
+                50% { transform: scale(1.1); }
+            }
+            @keyframes shimmer {
+                0% { background-position: -200% 0; }
+                100% { background-position: 200% 0; }
+            }
+        </style>
+        <div class="modal-content" style="max-width: 480px; text-align: center; padding: 24px;">
             <button class="close-modal" onclick="closeBlurredLikesModal()">
                 <i class="fas fa-times"></i>
             </button>
             
-            <h2 style="margin-bottom: 20px; display: flex; align-items: center; justify-content: center; gap: 10px;">
-                <i class="fas fa-heart" style="color: #ff6b6b;"></i>
-                Like Ricevuti
-            </h2>
+            <div style="margin-bottom: 24px;">
+                <div style="
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 12px;
+                    background: linear-gradient(135deg, rgba(255,75,110,0.2), rgba(255,138,92,0.2));
+                    padding: 12px 24px;
+                    border-radius: 50px;
+                    border: 1px solid rgba(255,75,110,0.3);
+                ">
+                    <span style="font-size: 28px;">❤️</span>
+                    <div style="text-align: left;">
+                        <div style="font-size: 24px; font-weight: bold; color: #ff6b6b;">6+ persone</div>
+                        <div style="font-size: 13px; color: #aaa;">ti hanno messo Like!</div>
+                    </div>
+                </div>
+            </div>
             
-            <div class="blurred-likes-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 24px;">
-                <div style="height: 160px; background: linear-gradient(135deg, rgba(255,75,110,0.3), rgba(255,138,92,0.3)); border-radius: 16px; filter: blur(5px); position: relative; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center;">
-                    <div style="width: 60px; height: 60px; background: rgba(255,255,255,0.3); border-radius: 50%; margin-bottom: 10px;"></div>
-                    <div style="width: 70%; height: 14px; background: rgba(255,255,255,0.3); border-radius: 8px; margin-bottom: 6px;"></div>
-                    <div style="width: 40%; height: 10px; background: rgba(255,255,255,0.2); border-radius: 8px;"></div>
-                </div>
-                <div style="height: 160px; background: linear-gradient(135deg, rgba(255,75,110,0.3), rgba(255,138,92,0.3)); border-radius: 16px; filter: blur(5px); position: relative; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center;">
-                    <div style="width: 60px; height: 60px; background: rgba(255,255,255,0.3); border-radius: 50%; margin-bottom: 10px;"></div>
-                    <div style="width: 70%; height: 14px; background: rgba(255,255,255,0.3); border-radius: 8px; margin-bottom: 6px;"></div>
-                    <div style="width: 40%; height: 10px; background: rgba(255,255,255,0.2); border-radius: 8px;"></div>
-                </div>
-                <div style="height: 160px; background: linear-gradient(135deg, rgba(255,75,110,0.3), rgba(255,138,92,0.3)); border-radius: 16px; filter: blur(5px); position: relative; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center;">
-                    <div style="width: 60px; height: 60px; background: rgba(255,255,255,0.3); border-radius: 50%; margin-bottom: 10px;"></div>
-                    <div style="width: 70%; height: 14px; background: rgba(255,255,255,0.3); border-radius: 8px; margin-bottom: 6px;"></div>
-                    <div style="width: 40%; height: 10px; background: rgba(255,255,255,0.2); border-radius: 8px;"></div>
-                </div>
-                <div style="height: 160px; background: linear-gradient(135deg, rgba(255,75,110,0.3), rgba(255,138,92,0.3)); border-radius: 16px; filter: blur(5px); position: relative; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center;">
-                    <div style="width: 60px; height: 60px; background: rgba(255,255,255,0.3); border-radius: 50%; margin-bottom: 10px;"></div>
-                    <div style="width: 70%; height: 14px; background: rgba(255,255,255,0.3); border-radius: 8px; margin-bottom: 6px;"></div>
-                    <div style="width: 40%; height: 10px; background: rgba(255,255,255,0.2); border-radius: 8px;"></div>
-                </div>
+            <div style="
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 12px;
+                margin-bottom: 24px;
+            ">
+                \${cardsHtml}
             </div>
             
             <div style="background: rgba(255,215,0,0.1); border: 1px solid rgba(255,215,0,0.3); border-radius: 16px; padding: 24px; margin-bottom: 20px;">
@@ -3461,10 +3615,7 @@ function closeBlurredLikesModal() {
     setActiveNav('navScopri');
 }
 
-function closeLikesModal() {
-    document.getElementById('likesModal')?.classList.remove('show');
-    setActiveNav('navScopri');
-}
+// Duplicate closeLikesModal removed (defined earlier)
 
 function showMatches(e) {
     if (e) e.preventDefault();
@@ -5344,7 +5495,7 @@ async function activateFreeBoost() {
     }
 }
 
-async function activateBoost(count) {
+async function purchaseBoostPack(count) {
     // In produzione qui ci sarebbe l'integrazione con pagamento
     showToast('💳 Integrazione pagamenti - Coming soon!');
 }
@@ -6134,16 +6285,7 @@ function closePostDetailModal() {
 }
 
 // Time ago helper
-function getTimeAgo(date) {
-    const seconds = Math.floor((new Date() - date) / 1000);
-    
-    if (seconds < 60) return 'Adesso';
-    if (seconds < 3600) return Math.floor(seconds / 60) + ' min fa';
-    if (seconds < 86400) return Math.floor(seconds / 3600) + ' ore fa';
-    if (seconds < 604800) return Math.floor(seconds / 86400) + ' giorni fa';
-    
-    return date.toLocaleDateString('it-IT');
-}
+// Duplicate getTimeAgo removed (defined earlier)
 
 // Carica commenti post
 async function loadPostComments(postId) {
@@ -6220,26 +6362,11 @@ async function loadPostComments(postId) {
 }
 
 // Escape HTML per sicurezza
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
+// Duplicate escapeHtml removed (defined earlier)
 // Calcola distanza tra due coordinate (formula Haversine)
-function calculateDistance(lat1, lon1, lat2, lon2) {
-    const R = 6371; // Raggio della Terra in km
-    const dLat = toRad(lat2 - lat1);
-    const dLon = toRad(lon2 - lon1);
-    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-              Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
-              Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    return R * c;
-}
+// Duplicate calculateDistance/toRad removed (defined earlier)
 
-function toRad(deg) {
-    return deg * (Math.PI / 180);
-}
+// Duplicate toRad removed
 
 
 // Invia commento
@@ -12165,4 +12292,60 @@ const addMoodToCard = (card, user) => {
 window.addMoodToCard = addMoodToCard;
 
 console.log('✅ Feature integrations complete');
+
+
+// =============================================
+// PREMIUM DEBUG & RESET FUNCTIONS
+// =============================================
+
+// Debug Premium status (callable from console)
+window.debugPremium = function() {
+    const plan = getCurrentPlan();
+    console.log('=== PREMIUM DEBUG INFO ===');
+    console.log('Plan:', userPremiumData.plan);
+    console.log('Plan Details:', plan);
+    console.log('Expires:', userPremiumData.expiresAt);
+    console.log('Daily Swipes Used:', userPremiumData.dailySwipesUsed, '/', plan.dailySwipes);
+    console.log('Daily Super Likes Used:', userPremiumData.dailySuperLikesUsed, '/', plan.dailySuperLikes);
+    console.log('Monthly Boosts Used:', userPremiumData.monthlyBoostsUsed, '/', plan.monthlyBoosts);
+    console.log('Last Swipe Reset:', userPremiumData.lastSwipeReset);
+    console.log('Last Super Like Reset:', userPremiumData.lastSuperLikeReset);
+    console.log('Last Boost Reset:', userPremiumData.lastBoostReset);
+    console.log('Can Swipe:', canSwipe());
+    console.log('Can Super Like:', canSuperLike());
+    console.log('Remaining Swipes:', getRemainingSwipes());
+    console.log('Remaining Super Likes:', getRemainingSuperLikes());
+    return userPremiumData;
+};
+
+// Force reset daily counters (callable from console for debugging)
+window.forceResetDailyCounters = async function() {
+    console.log('🔄 Forcing daily counter reset...');
+    userPremiumData.dailySwipesUsed = 0;
+    userPremiumData.dailySuperLikesUsed = 0;
+    userPremiumData.lastSwipeReset = new Date();
+    userPremiumData.lastSuperLikeReset = new Date();
+    await savePremiumData();
+    updateSwipeCounter();
+    console.log('✅ Daily counters reset! Swipes:', getRemainingSwipes(), 'Super Likes:', getRemainingSuperLikes());
+    showToast('✅ Contatori giornalieri resettati!', 'success');
+    return true;
+};
+
+// Set Premium plan (for testing)
+window.setPremiumPlan = async function(planName) {
+    if (!['basic', 'gold', 'platinum'].includes(planName)) {
+        console.error('❌ Piano non valido. Usa: basic, gold, platinum');
+        return false;
+    }
+    console.log('👑 Setting plan to:', planName);
+    userPremiumData.plan = planName;
+    userPremiumData.expiresAt = planName === 'basic' ? null : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
+    await savePremiumData();
+    updatePremiumBadge();
+    updateSwipeCounter();
+    console.log('✅ Piano impostato a:', planName);
+    showToast('👑 Piano impostato a ' + planName.toUpperCase(), 'success');
+    return true;
+};
 
