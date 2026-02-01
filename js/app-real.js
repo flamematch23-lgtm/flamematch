@@ -6853,9 +6853,34 @@ function renderQuestion() {
             <button class="match-btn primary" style="margin-top: 15px;" onclick="submitEmojiAnswer()">Conferma</button>
         `;
     } else {
-        // Multiple choice mode
+        // Multiple choice mode with vibrant colors
+        const colors = [
+            { bg: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', shadow: 'rgba(102, 126, 234, 0.5)' },
+            { bg: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', shadow: 'rgba(245, 87, 108, 0.5)' },
+            { bg: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', shadow: 'rgba(79, 172, 254, 0.5)' },
+            { bg: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)', shadow: 'rgba(67, 233, 123, 0.5)' }
+        ];
         optionsContainer.innerHTML = question.options.map((opt, i) => `
-            <div class="game-option" onclick="selectOption(this, ${i})">${opt}</div>
+            <div class="game-option" 
+                onclick="selectOption(this, ${i})"
+                style="
+                    background: ${colors[i % colors.length].bg};
+                    color: white;
+                    padding: 20px 25px;
+                    margin: 12px 0;
+                    border-radius: 16px;
+                    font-size: 18px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    box-shadow: 0 6px 20px ${colors[i % colors.length].shadow};
+                    border: 3px solid rgba(255,255,255,0.3);
+                    text-align: center;
+                    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+                "
+                onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 10px 30px ${colors[i % colors.length].shadow}';"
+                onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 6px 20px ${colors[i % colors.length].shadow}';"
+            >${opt}</div>
         `).join('');
     }
 }
@@ -6870,14 +6895,28 @@ function renderProgress() {
 
 // Select Option
 function selectOption(element, index) {
-    document.querySelectorAll('.game-option').forEach(opt => opt.classList.remove('selected'));
+    document.querySelectorAll('.game-option').forEach(opt => {
+        opt.classList.remove('selected');
+        opt.style.opacity = '0.5';
+        opt.style.transform = 'scale(0.95)';
+    });
     element.classList.add('selected');
+    element.style.opacity = '1';
+    element.style.transform = 'scale(1.1)';
+    element.style.border = '3px solid #00ff88';
+    element.style.boxShadow = '0 0 30px rgba(0,255,136,0.6), 0 10px 40px rgba(0,0,0,0.3)';
+    
+    // Add checkmark
+    if (!element.querySelector('.check-icon')) {
+        element.innerHTML += '<span class="check-icon" style="position:absolute;right:15px;font-size:24px;">✓</span>';
+        element.style.position = 'relative';
+    }
     
     // Auto-advance after short delay
     setTimeout(() => {
         playerAnswers.push(index);
         nextQuestion();
-    }, 500);
+    }, 800);
 }
 
 // Emoji Selection
