@@ -2977,6 +2977,320 @@ async function exploreOnline() {
     }
 }
 
+
+// ===========================================
+// FEED SOCIAL SYSTEM - Solo Match
+// ===========================================
+
+let feedMatchIds = [];
+let feedPosts = [];
+
+function showFeed(e) {
+    if (e) e.preventDefault();
+    setActiveNav('navFeed');
+    
+    let modal = document.getElementById('feedModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'feedModal';
+        modal.className = 'fullscreen-modal';
+        modal.innerHTML = `
+            <div style="display: flex; flex-direction: column; height: 100%; background: var(--bg-primary);">
+                <div style="padding: 20px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; background: linear-gradient(135deg, #ff6b6b 0%, #ff8e53 100%);">
+                    <h2 style="margin: 0; color: white; display: flex; align-items: center; gap: 10px;">
+                        <i class="fas fa-newspaper"></i> Feed
+                    </h2>
+                    <button onclick="closeFeedModal()" style="background: rgba(255,255,255,0.2); border: none; color: white; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; font-size: 1.2em;">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div style="padding: 15px; background: var(--bg-secondary); border-bottom: 1px solid var(--border-color);">
+                    <p style="margin: 0; color: var(--text-secondary); font-size: 0.9em; display: flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-heart" style="color: #ff6b6b;"></i>
+                        Post dalle persone con cui hai un match
+                    </p>
+                </div>
+                <div id="feedContent" style="flex: 1; overflow-y: auto; padding: 15px;">
+                    <div style="text-align: center; padding: 40px;">
+                        <div class="loader"></div>
+                        <p style="margin-top: 15px; color: var(--text-secondary);">Caricamento feed...</p>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+    modal.classList.add('show');
+    loadFeed();
+}
+
+function closeFeedModal() {
+    document.getElementById('feedModal')?.classList.remove('show');
+    setActiveNav('navScopri');
+}
+
+async function loadFeed() {
+    const container = document.getElementById('feedContent');
+    if (!container) return;
+    
+    const user = FlameAuth.currentUser;
+    if (!user) {
+        container.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-secondary);"><i class="fas fa-sign-in-alt" style="font-size: 3em; margin-bottom: 15px; opacity: 0.5;"></i><p>Accedi per vedere il feed</p></div>';
+        return;
+    }
+    
+    try {
+        // 1. Get all mutual matches
+        const matchesSnapshot = await firebase.firestore()
+            .collection('matches')
+            .where('users', 'array-contains', user.uid)
+            .get();
+        
+        feedMatchIds = [];
+        matchesSnapshot.forEach(doc => {
+            const users = doc.data().users;
+            const matchedUserId = users.find(id => id !== user.uid);
+            if (matchedUserId) feedMatchIds.push(matchedUserId);
+        });
+        
+        if (feedMatchIds.length === 0) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 60px 20px;">
+                    <div style="width: 100px; height: 100px; background: linear-gradient(135deg, #ff6b6b, #ff8e53); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px;">
+                        <i class="fas fa-heart-broken" style="font-size: 40px; color: white;"></i>
+                    </div>
+                    <h3 style="color: var(--text-primary); margin-bottom: 10px;">Nessun Match Ancora</h3>
+                    <p style="color: var(--text-secondary); max-width: 300px; margin: 0 auto;">
+                        Quando avrai dei match, vedrai qui i loro post e aggiornamenti!
+                    </p>
+                    <button onclick="closeFeedModal(); showScopri();" style="margin-top: 20px; padding: 12px 24px; background: linear-gradient(135deg, #ff6b6b, #ff8e53); color: white; border: none; border-radius: 25px; cursor: pointer; font-weight: 600;">
+                        <i class="fas fa-fire"></i> Inizia a Esplorare
+                    </button>
+                </div>
+            `;
+            return;
+        }
+        
+        // 2. Load posts from all matches (Firestore 'in' query supports max 10 items)
+        const batchSize = 10;
+        feedPosts = [];
+        
+        for (let i = 0; i < feedMatchIds.length; i += batchSize) {
+            const batch = feedMatchIds.slice(i, i + batchSize);
+            const postsSnapshot = await firebase.firestore()
+                .collection('posts')
+                .where('userId', 'in', batch)
+                .orderBy('createdAt', 'desc')
+                .limit(20)
+                .get();
+            
+            postsSnapshot.forEach(doc => {
+                feedPosts.push({ id: doc.id, ...doc.data() });
+            });
+        }
+        
+        // Sort all posts by date
+        feedPosts.sort((a, b) => (b.createdAt?.toDate?.() || 0) - (a.createdAt?.toDate?.() || 0));
+        
+        if (feedPosts.length === 0) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 60px 20px;">
+                    <div style="width: 100px; height: 100px; background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px;">
+                        <i class="fas fa-camera" style="font-size: 40px; color: white;"></i>
+                    </div>
+                    <h3 style="color: var(--text-primary); margin-bottom: 10px;">Nessun Post</h3>
+                    <p style="color: var(--text-secondary); max-width: 300px; margin: 0 auto;">
+                        I tuoi match non hanno ancora pubblicato nulla. Sii il primo a condividere qualcosa!
+                    </p>
+                </div>
+            `;
+            return;
+        }
+        
+        // 3. Load user data for all authors
+        const userIds = [...new Set(feedPosts.map(p => p.userId))];
+        const usersData = {};
+        
+        for (const uid of userIds) {
+            const userDoc = await firebase.firestore().collection('users').doc(uid).get();
+            if (userDoc.exists) {
+                usersData[uid] = userDoc.data();
+            }
+        }
+        
+        // 4. Render feed
+        container.innerHTML = feedPosts.map(post => {
+            const author = usersData[post.userId] || {};
+            const timeAgo = getTimeAgo(post.createdAt?.toDate?.() || new Date());
+            
+            return `
+                <div class="feed-post" style="background: var(--bg-secondary); border-radius: 15px; margin-bottom: 15px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                    <!-- Header -->
+                    <div style="display: flex; align-items: center; padding: 15px; gap: 12px;">
+                        <div onclick="viewMatchProfile('${post.userId}')" style="cursor: pointer;">
+                            <img src="${author.photoURL || author.photos?.[0] || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(author.name || 'U')}" 
+                                 style="width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 2px solid #ff6b6b;">
+                        </div>
+                        <div style="flex: 1;" onclick="viewMatchProfile('${post.userId}')" style="cursor: pointer;">
+                            <h4 style="margin: 0; color: var(--text-primary); font-size: 0.95em;">${author.name || 'Utente'}</h4>
+                            <span style="color: var(--text-secondary); font-size: 0.8em;">${timeAgo}</span>
+                        </div>
+                        <span style="background: linear-gradient(135deg, #ff6b6b, #ff8e53); color: white; padding: 4px 10px; border-radius: 12px; font-size: 0.7em; font-weight: 600;">
+                            <i class="fas fa-heart"></i> Match
+                        </span>
+                    </div>
+                    
+                    <!-- Caption -->
+                    ${post.caption ? `<p style="padding: 0 15px 10px; margin: 0; color: var(--text-primary); font-size: 0.95em;">${post.caption}</p>` : ''}
+                    
+                    <!-- Media -->
+                    ${post.mediaUrl ? `
+                        <div style="position: relative;">
+                            ${post.type === 'video' ? `
+                                <video src="${post.mediaUrl}" controls style="width: 100%; max-height: 400px; object-fit: contain; background: black;"></video>
+                            ` : `
+                                <img src="${post.mediaUrl}" style="width: 100%; max-height: 500px; object-fit: cover;" onclick="openPostDetail('${post.id}', ${JSON.stringify(post).replace(/"/g, '&quot;')})">
+                            `}
+                        </div>
+                    ` : ''}
+                    
+                    <!-- Actions -->
+                    <div style="display: flex; align-items: center; padding: 15px; gap: 20px; border-top: 1px solid var(--border-color);">
+                        <button onclick="toggleFeedPostLike('${post.id}')" id="feedLikeBtn_${post.id}" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 0.95em; transition: all 0.2s;">
+                            <i class="far fa-heart"></i>
+                            <span id="feedLikeCount_${post.id}">${post.likesCount || 0}</span>
+                        </button>
+                        <button onclick="openFeedComments('${post.id}')" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 0.95em;">
+                            <i class="far fa-comment"></i>
+                            <span>${post.commentsCount || 0}</span>
+                        </button>
+                        <button onclick="sendGiftFromFeed('${post.userId}')" style="background: none; border: none; color: #ff6b6b; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 0.95em; margin-left: auto;">
+                            <i class="fas fa-gift"></i> Regalo
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+        // Check which posts current user has liked
+        checkFeedLikedPosts();
+        
+    } catch (error) {
+        console.error('Errore caricamento feed:', error);
+        container.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                <i class="fas fa-exclamation-circle" style="font-size: 3em; margin-bottom: 15px; color: #ff6b6b;"></i>
+                <p>Errore nel caricamento del feed</p>
+                <button onclick="loadFeed()" style="margin-top: 15px; padding: 10px 20px; background: #ff6b6b; color: white; border: none; border-radius: 20px; cursor: pointer;">
+                    <i class="fas fa-redo"></i> Riprova
+                </button>
+            </div>
+        `;
+    }
+}
+
+async function checkFeedLikedPosts() {
+    const user = FlameAuth.currentUser;
+    if (!user) return;
+    
+    for (const post of feedPosts) {
+        try {
+            const likeDoc = await firebase.firestore()
+                .collection('posts').doc(post.id)
+                .collection('likes').doc(user.uid).get();
+            
+            const btn = document.getElementById(`feedLikeBtn_${post.id}`);
+            if (btn && likeDoc.exists) {
+                btn.innerHTML = `<i class="fas fa-heart" style="color: #ff6b6b;"></i> <span id="feedLikeCount_${post.id}">${post.likesCount || 0}</span>`;
+                btn.dataset.liked = 'true';
+            }
+        } catch (e) {}
+    }
+}
+
+async function toggleFeedPostLike(postId) {
+    const user = FlameAuth.currentUser;
+    if (!user) {
+        showToast('❌ Accedi per mettere like');
+        return;
+    }
+    
+    const btn = document.getElementById(`feedLikeBtn_${postId}`);
+    const countEl = document.getElementById(`feedLikeCount_${postId}`);
+    if (!btn || !countEl) return;
+    
+    const isLiked = btn.dataset.liked === 'true';
+    const likeRef = firebase.firestore()
+        .collection('posts').doc(postId)
+        .collection('likes').doc(user.uid);
+    const postRef = firebase.firestore().collection('posts').doc(postId);
+    
+    try {
+        if (isLiked) {
+            await likeRef.delete();
+            await postRef.update({
+                likesCount: firebase.firestore.FieldValue.increment(-1)
+            });
+            btn.innerHTML = `<i class="far fa-heart"></i> <span id="feedLikeCount_${postId}">${Math.max(0, parseInt(countEl.textContent) - 1)}</span>`;
+            btn.dataset.liked = 'false';
+        } else {
+            await likeRef.set({ userId: user.uid, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+            await postRef.update({
+                likesCount: firebase.firestore.FieldValue.increment(1)
+            });
+            btn.innerHTML = `<i class="fas fa-heart" style="color: #ff6b6b;"></i> <span id="feedLikeCount_${postId}">${parseInt(countEl.textContent) + 1}</span>`;
+            btn.dataset.liked = 'true';
+            
+            // Animazione cuore
+            btn.style.transform = 'scale(1.3)';
+            setTimeout(() => btn.style.transform = 'scale(1)', 200);
+        }
+    } catch (error) {
+        console.error('Errore like:', error);
+        showToast('❌ Errore');
+    }
+}
+
+function openFeedComments(postId) {
+    // Find the post in feedPosts
+    const post = feedPosts.find(p => p.id === postId);
+    if (post) {
+        openPostDetail(postId, post);
+    }
+}
+
+function sendGiftFromFeed(userId) {
+    // Close feed and open chat/gift with this user
+    closeFeedModal();
+    if (typeof VirtualGifts !== 'undefined' && VirtualGifts.showGiftsModal) {
+        // Set recipient
+        window.currentChatUserId = userId;
+        VirtualGifts.showGiftsModal();
+    } else {
+        showToast('🎁 Vai nella chat per inviare un regalo');
+    }
+}
+
+function getTimeAgo(date) {
+    if (!date) return '';
+    const now = new Date();
+    const diff = Math.floor((now - date) / 1000);
+    
+    if (diff < 60) return 'Ora';
+    if (diff < 3600) return Math.floor(diff / 60) + ' min';
+    if (diff < 86400) return Math.floor(diff / 3600) + ' h';
+    if (diff < 604800) return Math.floor(diff / 86400) + ' g';
+    return date.toLocaleDateString('it-IT');
+}
+
+// Export
+window.showFeed = showFeed;
+window.closeFeedModal = closeFeedModal;
+window.loadFeed = loadFeed;
+window.toggleFeedPostLike = toggleFeedPostLike;
+window.openFeedComments = openFeedComments;
+window.sendGiftFromFeed = sendGiftFromFeed;
+
 function showLikes(e) {
     if (e) e.preventDefault();
     setActiveNav('navLikes');
@@ -3014,10 +3328,26 @@ function showBlurredLikes() {
             </h2>
             
             <div class="blurred-likes-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 24px;">
-                <div style="height: 120px; background: rgba(255,107,107,0.2); border-radius: 12px; filter: blur(8px);"></div>
-                <div style="height: 120px; background: rgba(255,107,107,0.2); border-radius: 12px; filter: blur(8px);"></div>
-                <div style="height: 120px; background: rgba(255,107,107,0.2); border-radius: 12px; filter: blur(8px);"></div>
-                <div style="height: 120px; background: rgba(255,107,107,0.2); border-radius: 12px; filter: blur(8px);"></div>
+                <div style="height: 160px; background: linear-gradient(135deg, rgba(255,75,110,0.3), rgba(255,138,92,0.3)); border-radius: 16px; filter: blur(5px); position: relative; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                    <div style="width: 60px; height: 60px; background: rgba(255,255,255,0.3); border-radius: 50%; margin-bottom: 10px;"></div>
+                    <div style="width: 70%; height: 14px; background: rgba(255,255,255,0.3); border-radius: 8px; margin-bottom: 6px;"></div>
+                    <div style="width: 40%; height: 10px; background: rgba(255,255,255,0.2); border-radius: 8px;"></div>
+                </div>
+                <div style="height: 160px; background: linear-gradient(135deg, rgba(255,75,110,0.3), rgba(255,138,92,0.3)); border-radius: 16px; filter: blur(5px); position: relative; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                    <div style="width: 60px; height: 60px; background: rgba(255,255,255,0.3); border-radius: 50%; margin-bottom: 10px;"></div>
+                    <div style="width: 70%; height: 14px; background: rgba(255,255,255,0.3); border-radius: 8px; margin-bottom: 6px;"></div>
+                    <div style="width: 40%; height: 10px; background: rgba(255,255,255,0.2); border-radius: 8px;"></div>
+                </div>
+                <div style="height: 160px; background: linear-gradient(135deg, rgba(255,75,110,0.3), rgba(255,138,92,0.3)); border-radius: 16px; filter: blur(5px); position: relative; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                    <div style="width: 60px; height: 60px; background: rgba(255,255,255,0.3); border-radius: 50%; margin-bottom: 10px;"></div>
+                    <div style="width: 70%; height: 14px; background: rgba(255,255,255,0.3); border-radius: 8px; margin-bottom: 6px;"></div>
+                    <div style="width: 40%; height: 10px; background: rgba(255,255,255,0.2); border-radius: 8px;"></div>
+                </div>
+                <div style="height: 160px; background: linear-gradient(135deg, rgba(255,75,110,0.3), rgba(255,138,92,0.3)); border-radius: 16px; filter: blur(5px); position: relative; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                    <div style="width: 60px; height: 60px; background: rgba(255,255,255,0.3); border-radius: 50%; margin-bottom: 10px;"></div>
+                    <div style="width: 70%; height: 14px; background: rgba(255,255,255,0.3); border-radius: 8px; margin-bottom: 6px;"></div>
+                    <div style="width: 40%; height: 10px; background: rgba(255,255,255,0.2); border-radius: 8px;"></div>
+                </div>
             </div>
             
             <div style="background: rgba(255,215,0,0.1); border: 1px solid rgba(255,215,0,0.3); border-radius: 16px; padding: 24px; margin-bottom: 20px;">
@@ -5368,6 +5698,10 @@ async function loadUserPosts(userId) {
         
         grid.innerHTML = '';
         
+        // Check if viewing own profile
+        const currentUser = FlameAuth.currentUser;
+        const isOwnProfile = currentUser && currentUser.uid === userId;
+        
         postsSnapshot.forEach(doc => {
             const post = doc.data();
             const postEl = document.createElement('div');
@@ -5393,6 +5727,22 @@ async function loadUserPosts(userId) {
                 <span><i class="fas fa-comment"></i> ${post.commentsCount || 0}</span>
             `;
             postEl.appendChild(overlay);
+            
+            // Delete button for own posts
+            if (isOwnProfile) {
+                const deleteBtn = document.createElement('button');
+                deleteBtn.style.cssText = 'position: absolute; top: 5px; right: 5px; width: 28px; height: 28px; border-radius: 50%; background: rgba(255,75,75,0.9); border: none; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; opacity: 0; transition: opacity 0.2s; z-index: 10;';
+                deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
+                deleteBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    deletePost(doc.id);
+                };
+                postEl.appendChild(deleteBtn);
+                
+                // Show delete button on hover
+                postEl.onmouseenter = () => deleteBtn.style.opacity = '1';
+                postEl.onmouseleave = () => deleteBtn.style.opacity = '0';
+            }
             
             postEl.onclick = () => openPostDetail(doc.id, post);
             grid.appendChild(postEl);
@@ -7818,28 +8168,47 @@ const WalletSystem = {
     async spendCoins(amount, reason) {
         const user = FlameAuth.currentUser;
         if (!user) return false;
-        const balance = await this.getBalance();
-        if (balance < amount) {
-            showToast('❌ FlameCoins insufficienti!');
-            return false;
-        }
+        
         try {
-            await firebase.firestore().collection('users').doc(user.uid).update({
-                flameCoins: firebase.firestore.FieldValue.increment(-amount)
+            // Get current document
+            const userRef = firebase.firestore().collection('users').doc(user.uid);
+            const doc = await userRef.get();
+            
+            // Get or initialize balance
+            let currentBalance = 50; // Default for new users
+            if (doc.exists && typeof doc.data().flameCoins === 'number') {
+                currentBalance = doc.data().flameCoins;
+            } else {
+                // Initialize flameCoins for new user
+                await userRef.set({ flameCoins: 50 }, { merge: true });
+            }
+            
+            // Check if enough balance
+            if (currentBalance < amount) {
+                showToast('❌ FlameCoins insufficienti! Saldo: ' + currentBalance);
+                return false;
+            }
+            
+            // Deduct coins
+            await userRef.update({
+                flameCoins: currentBalance - amount
             });
-            await firebase.firestore().collection('users').doc(user.uid).collection('transactions').add({
+            
+            // Record transaction
+            await userRef.collection('transactions').add({
                 type: 'debit',
                 amount: amount,
                 reason: reason,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
             });
+            
             return true;
         } catch (e) {
             console.error('Error spending coins:', e);
+            showToast('❌ Errore nel pagamento');
             return false;
         }
     },
-    
     async getTransactions() {
         const user = FlameAuth.currentUser;
         if (!user) return [];
@@ -7891,9 +8260,9 @@ async function showWalletPanel() {
                 '<div style="color:rgba(255,255,255,0.8);font-size:14px;">SALDO ATTUALE</div>' +
                 '<div style="color:#fff;font-size:48px;font-weight:bold;">' + balance + ' 🔥</div>' +
             '</div>' +
-            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;">' +
+            '<div style="display:flex;justify-content:center;margin-bottom:20px;">' +
                 '<div style="background:rgba(255,75,110,0.2);border-radius:12px;padding:15px;text-align:center;cursor:pointer;" onclick="showBuyCoinsModal()"><div style="font-size:24px;">🛒</div><div style="color:#fff;font-size:12px;">Acquista</div></div>' +
-                '<div style="background:rgba(74,222,128,0.2);border-radius:12px;padding:15px;text-align:center;cursor:pointer;" onclick="showGiftPicker()"><div style="font-size:24px;">🎁</div><div style="color:#fff;font-size:12px;">Regali</div></div>' +
+                
             '</div>' +
             '<h3 style="color:#fff;font-size:16px;margin-bottom:10px;">📜 Ultime Transazioni</h3>' +
             '<div>' + transHTML + '</div>' +
