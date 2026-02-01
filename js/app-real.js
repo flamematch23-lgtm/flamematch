@@ -12094,39 +12094,10 @@ window.MoodStatus = MoodStatus;
 })();
 
 // Enhanced appendMessage with Read Receipts
-const originalAppendMessage = window.appendMessage;
-if (typeof originalAppendMessage === 'function') {
-    window.appendMessage = function(msg, messagesDiv) {
-        // Call original first
-        originalAppendMessage(msg, messagesDiv);
-        
-        // Add read receipt status to last message
-        const lastMsg = messagesDiv?.lastElementChild;
-        if (lastMsg && msg.senderId === window.currentUser?.id) {
-            const status = msg.status || 'sent';
-            const statusHtml = ReadReceiptsSystem.getAnimatedStatusIcon(status, true);
-            
-            const timeSpan = lastMsg.querySelector('.message-time');
-            if (timeSpan && !timeSpan.querySelector('.msg-status')) {
-                timeSpan.insertAdjacentHTML('beforeend', statusHtml);
-            }
-        }
-    };
-}
+// Note: Read receipts integrated into appendMessage function
 
 // Mark messages as read when opening chat
-const originalOpenChat = window.openChat;
-if (typeof originalOpenChat === 'function') {
-    window.openChat = async function(matchId, matchName, matchPhoto) {
-        // Call original
-        await originalOpenChat(matchId, matchName, matchPhoto);
-        
-        // Mark messages as read
-        const chatId = window.currentChatId || 
-            [window.currentUser?.id, matchId].sort().join('_');
-        ReadReceiptsSystem.markMessagesAsRead(chatId, window.currentUser?.id);
-    };
-}
+// Note: Read receipts integration moved to existing openChat function
 
 // Add prompts to profile view
 const originalShowProfile = window.showProfile;
