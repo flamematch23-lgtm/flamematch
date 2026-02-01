@@ -100,7 +100,7 @@ let userPremiumData = {
 // INITIALIZATION
 // ==========================================
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('🔥 FlameMatch App - Modalità REALE (v=44)');
+    console.log('🔥 FlameMatch App - Modalità REALE (v=61)');
     
     // Inizializza EmailJS per email di benvenuto
     if (window.FlameEmail) {
@@ -115,28 +115,48 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 function waitForFirebase() {
-    return new Promise((resolve) => {
+    console.log('⏳ Attesa Firebase...');
+    return new Promise((resolve, reject) => {
+        let attempts = 0;
+        const maxAttempts = 50; // 5 secondi max
+        
         if (typeof firebase !== 'undefined' && firebase.auth) {
+            console.log('✅ Firebase già pronto');
             resolve();
-        } else {
-            const check = setInterval(() => {
-                if (typeof firebase !== 'undefined' && firebase.auth) {
-                    clearInterval(check);
-                    resolve();
-                }
-            }, 100);
+            return;
         }
+        
+        const check = setInterval(() => {
+            attempts++;
+            if (typeof firebase !== 'undefined' && firebase.auth) {
+                clearInterval(check);
+                console.log('✅ Firebase pronto dopo ' + (attempts * 100) + 'ms');
+                resolve();
+            } else if (attempts >= maxAttempts) {
+                clearInterval(check);
+                console.error('❌ Firebase non disponibile dopo 5s');
+                // Don't reject, just resolve anyway and let auth handle it
+                resolve();
+            }
+        }, 100);
     });
 }
 
 function checkAuth() {
+    console.log('🔐 checkAuth() chiamato - in attesa di auth state...');
+    
     auth.onAuthStateChanged(async (user) => {
+        console.log('🔄 Auth state changed:', user ? user.email : 'NO USER');
+        
         if (user) {
             console.log('✅ Utente autenticato:', user.email);
             currentUser = user;
             
-            // Carica profilo utente
-            currentUserProfile = await FlameUsers.getProfile(user.uid);
+            try {
+                // Carica profilo utente
+                console.log('📥 Caricamento profilo utente...');
+                currentUserProfile = await FlameUsers.getProfile(user.uid);
+                console.log('✅ Profilo caricato:', currentUserProfile ? 'OK' : 'NUOVO UTENTE');
             
             if (!currentUserProfile) {
                 // Utente nuovo, crea profilo base
@@ -197,6 +217,15 @@ function checkAuth() {
             updateLastActive();
             // Aggiorna ogni 5 minuti
             setInterval(updateLastActive, 5 * 60 * 1000);
+            
+            console.log('🎉 Caricamento completato con successo!');
+            
+            } catch (error) {
+                console.error('❌ ERRORE CRITICO nel caricamento:', error);
+                console.error('Stack:', error.stack);
+                // Mostra errore all'utente
+                alert('Errore di caricamento: ' + error.message + '\n\nRicarica la pagina o contatta il supporto.');
+            }
             
         } else {
             console.log('❌ Utente non autenticato - redirect a login');

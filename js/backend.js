@@ -1133,10 +1133,8 @@ const FlameAnalytics = {
 // INIZIALIZZAZIONE
 // ==========================================
 
-// Auto-inizializza quando il DOM è pronto
-document.addEventListener('DOMContentLoaded', () => {
-    FlameAuth.init();
-});
+// FlameAuth.init() non viene chiamato automaticamente
+// per evitare conflitti con app-real.js che gestisce il flusso auth
 
 // Esporta moduli globalmente
 window.FlameAuth = FlameAuth;
