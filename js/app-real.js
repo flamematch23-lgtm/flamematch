@@ -2232,20 +2232,60 @@ async function appendMessage(msg) {
     const messagesContainer = document.getElementById('chatMessages');
     const isFromMe = msg.from === currentUser.uid;
     
-    // Decripta il messaggio
+    // Handle voice messages
+    if (msg.type === 'voice' && msg.audioData) {
+        const msgDiv = document.createElement('div');
+        msgDiv.className = `message ${isFromMe ? 'sent' : 'received'}`;
+        msgDiv.setAttribute('data-message-id', msg.id);
+        msgDiv.innerHTML = `
+            <div style="display:flex;align-items:center;gap:8px;">
+                <button onclick="voiceMessages.playAudio(this, '${msg.audioData}')" style="background:#ff6b6b;border:none;color:white;width:35px;height:35px;border-radius:50%;cursor:pointer;">
+                    <i class="fas fa-play"></i>
+                </button>
+                <div style="flex:1;height:4px;background:rgba(255,255,255,0.3);border-radius:2px;">
+                    <div class="audio-progress" style="width:0%;height:100%;background:#ff6b6b;border-radius:2px;transition:width 0.1s;"></div>
+                </div>
+                <span style="font-size:11px;opacity:0.7;">${msg.duration || 0}s</span>
+            </div>
+            ${messageReactions.getReactionsHTML(msg.reactions)}
+        `;
+        messagesContainer.appendChild(msgDiv);
+        messageReactions.addReactionListeners();
+        return;
+    }
+    
+    // Handle gift messages
+    if (msg.type === 'gift' && msg.gift) {
+        const msgDiv = document.createElement('div');
+        msgDiv.className = `message ${isFromMe ? 'sent' : 'received'}`;
+        msgDiv.setAttribute('data-message-id', msg.id);
+        msgDiv.innerHTML = `
+            <div style="text-align:center;padding:10px;">
+                <div style="font-size:48px;margin-bottom:5px;">${msg.gift.emoji}</div>
+                <div style="font-size:12px;color:var(--text-secondary);">${isFromMe ? 'Hai inviato' : 'Hai ricevuto'} ${msg.gift.name}</div>
+            </div>
+            ${messageReactions.getReactionsHTML(msg.reactions)}
+        `;
+        messagesContainer.appendChild(msgDiv);
+        messageReactions.addReactionListeners();
+        return;
+    }
+    
+    // Handle regular text messages
     const decryptedText = await decryptMessage(msg.text, currentChatMatchId);
     
     const msgDiv = document.createElement('div');
     msgDiv.className = `message ${isFromMe ? 'sent' : 'received'}`;
     msgDiv.setAttribute('data-message-id', msg.id);
     
-    // Aggiunge icona lucchetto per indicare crittografia
     msgDiv.innerHTML = `
         <span class="message-text">${escapeHtml(decryptedText)}</span>
         <span class="encryption-icon" title="Messaggio crittografato">🔒</span>
+        ${messageReactions.getReactionsHTML(msg.reactions)}
     `;
     
     messagesContainer.appendChild(msgDiv);
+    messageReactions.addReactionListeners();
 }
 
 function escapeHtml(text) {
@@ -2253,6 +2293,22 @@ function escapeHtml(text) {
     div.textContent = text;
     return div.innerHTML;
 }
+// Calcola distanza tra due coordinate (formula Haversine)
+function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371; // Raggio della Terra in km
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+              Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+}
+
+function toRad(deg) {
+    return deg * (Math.PI / 180);
+}
+
 
 function closeChat() {
     document.getElementById('chatModal').classList.remove('active');
@@ -3033,6 +3089,9 @@ async function loadFeed() {
     const container = document.getElementById('feedContent');
     if (!container) return;
     
+    // Load stories bar first
+    const storiesHTML = await storiesSystem.loadStoriesBar();
+    
     const user = FlameAuth.currentUser;
     if (!user) {
         container.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-secondary);"><i class="fas fa-sign-in-alt" style="font-size: 3em; margin-bottom: 15px; opacity: 0.5;"></i><p>Accedi per vedere il feed</p></div>';
@@ -3093,7 +3152,7 @@ async function loadFeed() {
         feedPosts.sort((a, b) => (b.createdAt?.toDate?.() || 0) - (a.createdAt?.toDate?.() || 0));
         
         if (feedPosts.length === 0) {
-            container.innerHTML = `
+            container.innerHTML = storiesHTML + `
                 <div style="text-align: center; padding: 60px 20px;">
                     <div style="width: 100px; height: 100px; background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px;">
                         <i class="fas fa-camera" style="font-size: 40px; color: white;"></i>
@@ -3119,7 +3178,7 @@ async function loadFeed() {
         }
         
         // 4. Render feed
-        container.innerHTML = feedPosts.map(post => {
+        container.innerHTML = storiesHTML + feedPosts.map(post => {
             const author = usersData[post.userId] || {};
             const timeAgo = getTimeAgo(post.createdAt?.toDate?.() || new Date());
             
@@ -6166,6 +6225,22 @@ function escapeHtml(text) {
     div.textContent = text;
     return div.innerHTML;
 }
+// Calcola distanza tra due coordinate (formula Haversine)
+function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371; // Raggio della Terra in km
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+              Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+}
+
+function toRad(deg) {
+    return deg * (Math.PI / 180);
+}
+
 
 // Invia commento
 async function submitComment(postId) {
@@ -8489,3 +8564,1997 @@ giftStyle.textContent = '@keyframes giftPop{0%{transform:translate(-50%,-50%) sc
 document.head.appendChild(giftStyle);
 
 console.log('🎁 Virtual Gifts System loaded!');
+
+// ================================================
+// VOICE MESSAGES SYSTEM
+// ================================================
+
+class VoiceMessages {
+    constructor() {
+        this.mediaRecorder = null;
+        this.audioChunks = [];
+        this.isRecording = false;
+        this.recordingTimer = null;
+        this.recordingSeconds = 0;
+    }
+
+    // Add voice button to chat
+    addVoiceButton() {
+        const chatInput = document.querySelector('.chat-input-area');
+        if (!chatInput || document.getElementById('voiceBtn')) return;
+        
+        const sendBtn = chatInput.querySelector('button[onclick*="sendMessage"]');
+        if (sendBtn) {
+            const voiceBtn = document.createElement('button');
+            voiceBtn.id = 'voiceBtn';
+            voiceBtn.innerHTML = '🎤';
+            voiceBtn.title = 'Tieni premuto per registrare';
+            voiceBtn.style.cssText = `
+                background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+                border: none;
+                border-radius: 50%;
+                width: 45px;
+                height: 45px;
+                font-size: 20px;
+                cursor: pointer;
+                margin-right: 8px;
+                transition: all 0.3s ease;
+                box-shadow: 0 2px 10px rgba(255,107,107,0.3);
+            `;
+            
+            voiceBtn.onmousedown = () => this.startRecording();
+            voiceBtn.onmouseup = () => this.stopRecording();
+            voiceBtn.onmouseleave = () => { if (this.isRecording) this.stopRecording(); };
+            voiceBtn.ontouchstart = (e) => { e.preventDefault(); this.startRecording(); };
+            voiceBtn.ontouchend = () => this.stopRecording();
+            
+            sendBtn.parentNode.insertBefore(voiceBtn, sendBtn);
+        }
+    }
+
+    async startRecording() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            this.mediaRecorder = new MediaRecorder(stream);
+            this.audioChunks = [];
+            this.isRecording = true;
+            this.recordingSeconds = 0;
+            
+            this.mediaRecorder.ondataavailable = (e) => {
+                this.audioChunks.push(e.data);
+            };
+            
+            this.mediaRecorder.start();
+            this.showRecordingUI();
+            
+            // Timer
+            this.recordingTimer = setInterval(() => {
+                this.recordingSeconds++;
+                this.updateRecordingUI();
+                if (this.recordingSeconds >= 60) this.stopRecording(); // Max 60 sec
+            }, 1000);
+            
+        } catch (err) {
+            showToast('Permesso microfono negato', 'error');
+        }
+    }
+
+    showRecordingUI() {
+        const btn = document.getElementById('voiceBtn');
+        if (btn) {
+            btn.innerHTML = '⏺️';
+            btn.style.background = 'linear-gradient(135deg, #e74c3c, #c0392b)';
+            btn.style.animation = 'pulse 1s infinite';
+        }
+        
+        // Add recording indicator
+        const indicator = document.createElement('div');
+        indicator.id = 'recordingIndicator';
+        indicator.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.9);
+            padding: 30px 50px;
+            border-radius: 20px;
+            z-index: 10000;
+            text-align: center;
+        `;
+        indicator.innerHTML = `
+            <div style="font-size: 60px; animation: pulse 1s infinite;">🎤</div>
+            <div id="recordTime" style="color: #ff6b6b; font-size: 24px; margin-top: 10px;">0:00</div>
+            <div style="color: #888; margin-top: 10px;">Rilascia per inviare</div>
+        `;
+        document.body.appendChild(indicator);
+    }
+
+    updateRecordingUI() {
+        const timeEl = document.getElementById('recordTime');
+        if (timeEl) {
+            const mins = Math.floor(this.recordingSeconds / 60);
+            const secs = this.recordingSeconds % 60;
+            timeEl.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+    }
+
+    async stopRecording() {
+        if (!this.isRecording) return;
+        
+        this.isRecording = false;
+        clearInterval(this.recordingTimer);
+        
+        // Remove indicator
+        document.getElementById('recordingIndicator')?.remove();
+        
+        // Reset button
+        const btn = document.getElementById('voiceBtn');
+        if (btn) {
+            btn.innerHTML = '🎤';
+            btn.style.background = 'linear-gradient(135deg, #ff6b6b, #ee5a24)';
+            btn.style.animation = '';
+        }
+        
+        if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
+            this.mediaRecorder.stop();
+            
+            this.mediaRecorder.onstop = async () => {
+                const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
+                
+                // Convert to base64
+                const reader = new FileReader();
+                reader.onloadend = async () => {
+                    const base64Audio = reader.result;
+                    await this.sendVoiceMessage(base64Audio, this.recordingSeconds);
+                };
+                reader.readAsDataURL(audioBlob);
+                
+                // Stop all tracks
+                this.mediaRecorder.stream.getTracks().forEach(track => track.stop());
+            };
+        }
+    }
+
+    async sendVoiceMessage(audioData, duration) {
+        if (!window.currentChatUserId || !window.currentUser) return;
+        
+        const chatId = [window.currentUser.odoringu, window.currentChatUserId].sort().join('_');
+        
+        try {
+            await firebase.firestore().collection('chats').doc(chatId).collection('messages').add({
+                senderId: window.currentUser.uid,
+                type: 'voice',
+                audioData: audioData,
+                duration: duration,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                read: false
+            });
+            
+            showToast('Messaggio vocale inviato! 🎤', 'success');
+        } catch (err) {
+            showToast('Errore invio audio', 'error');
+        }
+    }
+
+    // Render voice message in chat
+    renderVoiceMessage(msg, isMine) {
+        const mins = Math.floor(msg.duration / 60);
+        const secs = msg.duration % 60;
+        
+        return `
+            <div style="
+                background: ${isMine ? 'linear-gradient(135deg, #667eea, #764ba2)' : 'rgba(255,255,255,0.1)'};
+                padding: 12px 16px;
+                border-radius: 20px;
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                min-width: 200px;
+            ">
+                <button onclick="voiceMessages.playAudio(this, '${msg.audioData}')" style="
+                    background: rgba(255,255,255,0.2);
+                    border: none;
+                    border-radius: 50%;
+                    width: 40px;
+                    height: 40px;
+                    font-size: 18px;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                ">▶️</button>
+                <div style="flex: 1;">
+                    <div style="
+                        height: 4px;
+                        background: rgba(255,255,255,0.3);
+                        border-radius: 2px;
+                        position: relative;
+                    ">
+                        <div class="voice-progress" style="
+                            height: 100%;
+                            background: #fff;
+                            border-radius: 2px;
+                            width: 0%;
+                            transition: width 0.1s linear;
+                        "></div>
+                    </div>
+                    <div style="color: rgba(255,255,255,0.7); font-size: 12px; margin-top: 4px;">
+                        🎤 ${mins}:${secs.toString().padStart(2, '0')}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    playAudio(btn, audioData) {
+        const audio = new Audio(audioData);
+        const progressBar = btn.parentNode.querySelector('.voice-progress');
+        
+        btn.innerHTML = '⏸️';
+        
+        audio.onplay = () => {
+            btn.innerHTML = '⏸️';
+        };
+        
+        audio.ontimeupdate = () => {
+            const progress = (audio.currentTime / audio.duration) * 100;
+            if (progressBar) progressBar.style.width = progress + '%';
+        };
+        
+        audio.onended = () => {
+            btn.innerHTML = '▶️';
+            if (progressBar) progressBar.style.width = '0%';
+        };
+        
+        if (audio.paused) {
+            audio.play();
+        } else {
+            audio.pause();
+            btn.innerHTML = '▶️';
+        }
+    }
+}
+
+const voiceMessages = new VoiceMessages();
+
+// ================================================
+// STORIES 24H SYSTEM
+// ================================================
+
+class StoriesSystem {
+    constructor() {
+        this.currentStoryIndex = 0;
+        this.currentUserStories = [];
+        this.storyTimeout = null;
+    }
+
+    // Show stories bar in Feed
+    async loadStoriesBar() {
+        if (!window.currentUser) return '';
+        
+        // Get matches
+        const matchesSnap = await firebase.firestore()
+            .collection('users').doc(window.currentUser.uid)
+            .collection('matches').get();
+        
+        const matchIds = matchesSnap.docs.map(d => d.id);
+        matchIds.unshift(window.currentUser.uid); // Add self first
+        
+        // Get stories from last 24h
+        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        
+        let storiesHTML = '';
+        
+        for (const userId of matchIds.slice(0, 10)) { // Max 10
+            const storiesSnap = await firebase.firestore()
+                .collection('users').doc(userId)
+                .collection('stories')
+                .where('createdAt', '>', oneDayAgo)
+                .orderBy('createdAt', 'desc')
+                .limit(1)
+                .get();
+            
+            if (storiesSnap.empty && userId !== window.currentUser.uid) continue;
+            
+            const userDoc = await firebase.firestore().collection('users').doc(userId).get();
+            const userData = userDoc.data() || {};
+            const hasStory = !storiesSnap.empty;
+            const isMe = userId === window.currentUser.uid;
+            
+            storiesHTML += `
+                <div onclick="${isMe && !hasStory ? 'storiesSystem.createStory()' : `storiesSystem.viewStories('${userId}')`}" 
+                     style="
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        cursor: pointer;
+                        min-width: 80px;
+                     ">
+                    <div style="
+                        width: 65px;
+                        height: 65px;
+                        border-radius: 50%;
+                        padding: 3px;
+                        background: ${hasStory ? 'linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)' : 'rgba(255,255,255,0.2)'};
+                    ">
+                        <div style="
+                            width: 100%;
+                            height: 100%;
+                            border-radius: 50%;
+                            background: url('${userData.photos?.[0] || 'https://via.placeholder.com/65'}') center/cover;
+                            border: 3px solid #1a1a2e;
+                            position: relative;
+                        ">
+                            ${isMe && !hasStory ? `
+                                <div style="
+                                    position: absolute;
+                                    bottom: -2px;
+                                    right: -2px;
+                                    background: #3b82f6;
+                                    border-radius: 50%;
+                                    width: 22px;
+                                    height: 22px;
+                                    display: flex;
+                                    align-items: center;
+                                    justify-content: center;
+                                    font-size: 14px;
+                                    border: 2px solid #1a1a2e;
+                                ">+</div>
+                            ` : ''}
+                        </div>
+                    </div>
+                    <span style="font-size: 12px; margin-top: 6px; color: #fff;">
+                        ${isMe ? 'Tu' : (userData.name || 'User').split(' ')[0]}
+                    </span>
+                </div>
+            `;
+        }
+        
+        return `
+            <div style="
+                display: flex;
+                gap: 15px;
+                padding: 15px;
+                overflow-x: auto;
+                background: rgba(255,255,255,0.05);
+                border-radius: 15px;
+                margin-bottom: 20px;
+            ">
+                ${storiesHTML || '<div style="color: #888; padding: 20px;">Nessuna storia dai tuoi match</div>'}
+            </div>
+        `;
+    }
+
+    // Create new story
+    createStory() {
+        const modal = document.createElement('div');
+        modal.id = 'storyCreateModal';
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.95);
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        `;
+        
+        modal.innerHTML = `
+            <div style="text-align: center; padding: 20px;">
+                <h2 style="color: #fff; margin-bottom: 30px;">📖 Crea Storia</h2>
+                
+                <div style="display: flex; gap: 20px; justify-content: center;">
+                    <label style="
+                        background: linear-gradient(135deg, #667eea, #764ba2);
+                        padding: 30px 40px;
+                        border-radius: 20px;
+                        cursor: pointer;
+                        text-align: center;
+                    ">
+                        <input type="file" accept="image/*" onchange="storiesSystem.uploadStory(this, 'image')" style="display: none;">
+                        <div style="font-size: 40px; margin-bottom: 10px;">📷</div>
+                        <div style="color: #fff;">Foto</div>
+                    </label>
+                    
+                    <label style="
+                        background: linear-gradient(135deg, #f093fb, #f5576c);
+                        padding: 30px 40px;
+                        border-radius: 20px;
+                        cursor: pointer;
+                        text-align: center;
+                    ">
+                        <input type="file" accept="video/*" onchange="storiesSystem.uploadStory(this, 'video')" style="display: none;">
+                        <div style="font-size: 40px; margin-bottom: 10px;">🎥</div>
+                        <div style="color: #fff;">Video</div>
+                    </label>
+                    
+                    <div onclick="storiesSystem.createTextStory()" style="
+                        background: linear-gradient(135deg, #11998e, #38ef7d);
+                        padding: 30px 40px;
+                        border-radius: 20px;
+                        cursor: pointer;
+                        text-align: center;
+                    ">
+                        <div style="font-size: 40px; margin-bottom: 10px;">✏️</div>
+                        <div style="color: #fff;">Testo</div>
+                    </div>
+                </div>
+                
+                <button onclick="document.getElementById('storyCreateModal').remove()" style="
+                    margin-top: 30px;
+                    padding: 12px 30px;
+                    background: rgba(255,255,255,0.1);
+                    border: none;
+                    border-radius: 25px;
+                    color: #fff;
+                    cursor: pointer;
+                ">Annulla</button>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+    }
+
+    async uploadStory(input, type) {
+        const file = input.files[0];
+        if (!file) return;
+        
+        showToast('Caricamento storia...', 'info');
+        
+        try {
+            // Upload to Cloudinary
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('upload_preset', 'flamematch');
+            
+            const res = await fetch('https://api.cloudinary.com/v1_1/dnxqpp2en/upload', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const data = await res.json();
+            
+            // Save to Firestore
+            await firebase.firestore()
+                .collection('users').doc(window.currentUser.uid)
+                .collection('stories').add({
+                    type: type,
+                    mediaUrl: data.secure_url,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    views: [],
+                    reactions: []
+                });
+            
+            document.getElementById('storyCreateModal')?.remove();
+            showToast('Storia pubblicata! 📖', 'success');
+            
+            // Refresh feed
+            if (typeof showFeed === 'function') showFeed();
+            
+        } catch (err) {
+            showToast('Errore caricamento', 'error');
+        }
+    }
+
+    createTextStory() {
+        const modal = document.getElementById('storyCreateModal');
+        if (!modal) return;
+        
+        modal.innerHTML = `
+            <div style="text-align: center; padding: 20px; width: 100%; max-width: 400px;">
+                <h2 style="color: #fff; margin-bottom: 20px;">✏️ Storia di Testo</h2>
+                
+                <textarea id="storyText" placeholder="Scrivi qualcosa..." style="
+                    width: 100%;
+                    height: 150px;
+                    background: rgba(255,255,255,0.1);
+                    border: none;
+                    border-radius: 15px;
+                    padding: 15px;
+                    color: #fff;
+                    font-size: 18px;
+                    resize: none;
+                "></textarea>
+                
+                <div style="margin-top: 15px;">
+                    <span style="color: #888;">Sfondo:</span>
+                    <div style="display: flex; gap: 10px; justify-content: center; margin-top: 10px;">
+                        ${['linear-gradient(135deg, #667eea, #764ba2)', 
+                           'linear-gradient(135deg, #f093fb, #f5576c)',
+                           'linear-gradient(135deg, #4facfe, #00f2fe)',
+                           'linear-gradient(135deg, #43e97b, #38f9d7)',
+                           'linear-gradient(135deg, #fa709a, #fee140)'].map((bg, i) => `
+                            <div onclick="document.getElementById('storyBg').value='${bg}'; this.parentNode.querySelectorAll('div').forEach(d=>d.style.border='2px solid transparent'); this.style.border='2px solid #fff';" 
+                                 style="width: 40px; height: 40px; border-radius: 50%; background: ${bg}; cursor: pointer; border: 2px solid ${i===0?'#fff':'transparent'};"></div>
+                        `).join('')}
+                    </div>
+                    <input type="hidden" id="storyBg" value="linear-gradient(135deg, #667eea, #764ba2)">
+                </div>
+                
+                <div style="display: flex; gap: 15px; justify-content: center; margin-top: 20px;">
+                    <button onclick="document.getElementById('storyCreateModal').remove()" style="
+                        padding: 12px 25px;
+                        background: rgba(255,255,255,0.1);
+                        border: none;
+                        border-radius: 25px;
+                        color: #fff;
+                        cursor: pointer;
+                    ">Annulla</button>
+                    <button onclick="storiesSystem.publishTextStory()" style="
+                        padding: 12px 25px;
+                        background: linear-gradient(135deg, #667eea, #764ba2);
+                        border: none;
+                        border-radius: 25px;
+                        color: #fff;
+                        cursor: pointer;
+                    ">Pubblica</button>
+                </div>
+            </div>
+        `;
+    }
+
+    async publishTextStory() {
+        const text = document.getElementById('storyText')?.value?.trim();
+        const bg = document.getElementById('storyBg')?.value;
+        
+        if (!text) {
+            showToast('Scrivi qualcosa!', 'error');
+            return;
+        }
+        
+        try {
+            await firebase.firestore()
+                .collection('users').doc(window.currentUser.uid)
+                .collection('stories').add({
+                    type: 'text',
+                    text: text,
+                    background: bg,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    views: [],
+                    reactions: []
+                });
+            
+            document.getElementById('storyCreateModal')?.remove();
+            showToast('Storia pubblicata! 📖', 'success');
+            
+            if (typeof showFeed === 'function') showFeed();
+            
+        } catch (err) {
+            showToast('Errore pubblicazione', 'error');
+        }
+    }
+
+    // View stories
+    async viewStories(userId) {
+        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        
+        const storiesSnap = await firebase.firestore()
+            .collection('users').doc(userId)
+            .collection('stories')
+            .where('createdAt', '>', oneDayAgo)
+            .orderBy('createdAt', 'asc')
+            .get();
+        
+        if (storiesSnap.empty) {
+            showToast('Nessuna storia', 'info');
+            return;
+        }
+        
+        this.currentUserStories = storiesSnap.docs.map(d => ({ id: d.id, ...d.data(), userId }));
+        this.currentStoryIndex = 0;
+        
+        this.showStoryViewer();
+    }
+
+    showStoryViewer() {
+        const story = this.currentUserStories[this.currentStoryIndex];
+        if (!story) return;
+        
+        // Mark as viewed
+        if (story.userId !== window.currentUser?.uid) {
+            firebase.firestore()
+                .collection('users').doc(story.userId)
+                .collection('stories').doc(story.id)
+                .update({
+                    views: firebase.firestore.FieldValue.arrayUnion(window.currentUser.uid)
+                }).catch(() => {});
+        }
+        
+        let content = '';
+        if (story.type === 'text') {
+            content = `
+                <div style="
+                    width: 100%;
+                    height: 100%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    background: ${story.background};
+                    padding: 40px;
+                ">
+                    <p style="color: #fff; font-size: 28px; text-align: center; text-shadow: 2px 2px 4px rgba(0,0,0,0.3);">
+                        ${story.text}
+                    </p>
+                </div>
+            `;
+        } else if (story.type === 'image') {
+            content = `<img src="${story.mediaUrl}" style="width: 100%; height: 100%; object-fit: contain;">`;
+        } else if (story.type === 'video') {
+            content = `<video src="${story.mediaUrl}" autoplay muted style="width: 100%; height: 100%; object-fit: contain;"></video>`;
+        }
+        
+        // Remove existing viewer
+        document.getElementById('storyViewer')?.remove();
+        
+        const viewer = document.createElement('div');
+        viewer.id = 'storyViewer';
+        viewer.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #000;
+            z-index: 10001;
+            display: flex;
+            flex-direction: column;
+        `;
+        
+        viewer.innerHTML = `
+            <!-- Progress bars -->
+            <div style="display: flex; gap: 4px; padding: 10px 15px; position: absolute; top: 0; left: 0; right: 0; z-index: 2;">
+                ${this.currentUserStories.map((_, i) => `
+                    <div style="flex: 1; height: 3px; background: rgba(255,255,255,0.3); border-radius: 2px; overflow: hidden;">
+                        <div style="height: 100%; background: #fff; width: ${i < this.currentStoryIndex ? '100%' : i === this.currentStoryIndex ? '0%' : '0%'}; ${i === this.currentStoryIndex ? 'animation: storyProgress 5s linear forwards;' : ''}"></div>
+                    </div>
+                `).join('')}
+            </div>
+            
+            <!-- Close button -->
+            <button onclick="document.getElementById('storyViewer').remove(); clearTimeout(storiesSystem.storyTimeout);" style="
+                position: absolute;
+                top: 50px;
+                right: 15px;
+                background: rgba(255,255,255,0.2);
+                border: none;
+                border-radius: 50%;
+                width: 40px;
+                height: 40px;
+                font-size: 20px;
+                cursor: pointer;
+                z-index: 3;
+            ">✕</button>
+            
+            <!-- Content -->
+            <div style="flex: 1; display: flex; align-items: center; justify-content: center;">
+                ${content}
+            </div>
+            
+            <!-- Navigation -->
+            <div onclick="storiesSystem.prevStory()" style="position: absolute; left: 0; top: 0; bottom: 0; width: 30%; cursor: pointer;"></div>
+            <div onclick="storiesSystem.nextStory()" style="position: absolute; right: 0; top: 0; bottom: 0; width: 30%; cursor: pointer;"></div>
+            
+            <!-- Reactions -->
+            <div style="position: absolute; bottom: 30px; left: 0; right: 0; display: flex; justify-content: center; gap: 15px;">
+                ${['❤️', '🔥', '😂', '😮', '👏'].map(emoji => `
+                    <button onclick="storiesSystem.reactToStory('${emoji}')" style="
+                        background: rgba(255,255,255,0.2);
+                        border: none;
+                        border-radius: 50%;
+                        width: 50px;
+                        height: 50px;
+                        font-size: 24px;
+                        cursor: pointer;
+                    ">${emoji}</button>
+                `).join('')}
+            </div>
+        `;
+        
+        document.body.appendChild(viewer);
+        
+        // Add animation
+        const style = document.createElement('style');
+        style.textContent = `@keyframes storyProgress { from { width: 0%; } to { width: 100%; } }`;
+        viewer.appendChild(style);
+        
+        // Auto-advance
+        this.storyTimeout = setTimeout(() => this.nextStory(), 5000);
+    }
+
+    prevStory() {
+        clearTimeout(this.storyTimeout);
+        if (this.currentStoryIndex > 0) {
+            this.currentStoryIndex--;
+            this.showStoryViewer();
+        }
+    }
+
+    nextStory() {
+        clearTimeout(this.storyTimeout);
+        if (this.currentStoryIndex < this.currentUserStories.length - 1) {
+            this.currentStoryIndex++;
+            this.showStoryViewer();
+        } else {
+            document.getElementById('storyViewer')?.remove();
+        }
+    }
+
+    async reactToStory(emoji) {
+        const story = this.currentUserStories[this.currentStoryIndex];
+        if (!story || story.userId === window.currentUser?.uid) return;
+        
+        try {
+            await firebase.firestore()
+                .collection('users').doc(story.userId)
+                .collection('stories').doc(story.id)
+                .update({
+                    reactions: firebase.firestore.FieldValue.arrayUnion({
+                        emoji,
+                        userId: window.currentUser.uid,
+                        timestamp: Date.now()
+                    })
+                });
+            
+            showToast(`${emoji} inviato!`, 'success');
+        } catch (err) {}
+    }
+}
+
+const storiesSystem = new StoriesSystem();
+
+// ================================================
+// ICEBREAKER GAMES SYSTEM
+// ================================================
+
+class IcebreakerGames {
+    constructor() {
+        this.games = {
+            wouldYouRather: {
+                name: 'Preferiresti...',
+                icon: '🤔',
+                questions: [
+                    ['Viaggiare nel passato', 'Viaggiare nel futuro'],
+                    ['Essere invisibile', 'Saper volare'],
+                    ['Vincere alla lotteria', 'Trovare il vero amore'],
+                    ['Vivere al mare', 'Vivere in montagna'],
+                    ['Avere memoria fotografica', 'Essere irresistibilmente carismatico'],
+                    ['Pizza per sempre', 'Sushi per sempre'],
+                    ['Netflix tutto il weekend', 'Avventura all\'aperto'],
+                    ['Superpotere di leggere la mente', 'Superpotere di teletrasportarti'],
+                    ['Una villa in campagna', 'Un attico in città'],
+                    ['Saper suonare ogni strumento', 'Parlare ogni lingua']
+                ]
+            },
+            trueOrFalse: {
+                name: 'Vero o Falso',
+                icon: '✅❌',
+                statements: [
+                    'Ho fatto bungee jumping',
+                    'So cucinare bene',
+                    'Ho un tatuaggio nascosto',
+                    'Ho viaggiato in più di 5 paesi',
+                    'Parlo più di 2 lingue',
+                    'Ho un talento segreto',
+                    'Sono mattiniero/a',
+                    'Ho avuto un animale esotico',
+                    'So ballare il tango',
+                    'Ho conosciuto una celebrità'
+                ]
+            },
+            emojiStory: {
+                name: 'Emoji Story',
+                icon: '😎📖',
+                prompts: [
+                    'Racconta la tua giornata tipo',
+                    'Il tuo film preferito',
+                    'La tua ultima vacanza',
+                    'Come ti senti oggi',
+                    'Il tuo sogno nel cassetto',
+                    'La tua serata ideale',
+                    'Il tuo piatto preferito',
+                    'Un momento imbarazzante'
+                ]
+            },
+            quickQuiz: {
+                name: 'Quiz Rapido',
+                icon: '⚡',
+                questions: [
+                    { q: 'Colore preferito?', opts: ['🔵 Blu', '🔴 Rosso', '💚 Verde', '💜 Viola'] },
+                    { q: 'Stagione preferita?', opts: ['🌸 Primavera', '☀️ Estate', '🍂 Autunno', '❄️ Inverno'] },
+                    { q: 'Animale preferito?', opts: ['🐕 Cane', '🐈 Gatto', '🐦 Uccello', '🐠 Pesce'] },
+                    { q: 'Musica preferita?', opts: ['🎸 Rock', '🎤 Pop', '🎻 Classica', '🎧 Elettronica'] },
+                    { q: 'Hobby preferito?', opts: ['📚 Leggere', '🎮 Gaming', '⚽ Sport', '🎨 Arte'] }
+                ]
+            }
+        };
+    }
+
+    // Add game button to chat
+    addGameButton() {
+        const chatInput = document.querySelector('.chat-input-area');
+        if (!chatInput || document.getElementById('gameBtn')) return;
+        
+        const voiceBtn = document.getElementById('voiceBtn');
+        const insertBefore = voiceBtn || chatInput.querySelector('button');
+        
+        if (insertBefore) {
+            const gameBtn = document.createElement('button');
+            gameBtn.id = 'gameBtn';
+            gameBtn.innerHTML = '🎮';
+            gameBtn.title = 'Giochi Icebreaker';
+            gameBtn.style.cssText = `
+                background: linear-gradient(135deg, #11998e, #38ef7d);
+                border: none;
+                border-radius: 50%;
+                width: 45px;
+                height: 45px;
+                font-size: 20px;
+                cursor: pointer;
+                margin-right: 8px;
+                transition: all 0.3s ease;
+                box-shadow: 0 2px 10px rgba(17,153,142,0.3);
+            `;
+            
+            gameBtn.onclick = () => this.showGameSelector();
+            insertBefore.parentNode.insertBefore(gameBtn, insertBefore);
+        }
+    }
+
+    showGameSelector() {
+        const modal = document.createElement('div');
+        modal.id = 'gameSelectorModal';
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.9);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease;
+        `;
+        
+        modal.innerHTML = `
+            <div style="
+                background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+                border-radius: 25px;
+                padding: 30px;
+                max-width: 400px;
+                width: 90%;
+                text-align: center;
+            ">
+                <h2 style="color: #fff; margin-bottom: 25px;">🎮 Giochi Icebreaker</h2>
+                <p style="color: #888; margin-bottom: 20px;">Rompi il ghiaccio con un gioco divertente!</p>
+                
+                <div style="display: grid; gap: 15px;">
+                    ${Object.entries(this.games).map(([key, game]) => `
+                        <button onclick="icebreakerGames.startGame('${key}')" style="
+                            background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05));
+                            border: 1px solid rgba(255,255,255,0.1);
+                            border-radius: 15px;
+                            padding: 20px;
+                            cursor: pointer;
+                            text-align: left;
+                            display: flex;
+                            align-items: center;
+                            gap: 15px;
+                            transition: all 0.3s ease;
+                        " onmouseover="this.style.background='linear-gradient(135deg, rgba(102,126,234,0.3), rgba(118,75,162,0.3))'" 
+                           onmouseout="this.style.background='linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05))'">
+                            <span style="font-size: 35px;">${game.icon}</span>
+                            <span style="color: #fff; font-size: 18px; font-weight: 500;">${game.name}</span>
+                        </button>
+                    `).join('')}
+                </div>
+                
+                <button onclick="document.getElementById('gameSelectorModal').remove()" style="
+                    margin-top: 25px;
+                    padding: 12px 30px;
+                    background: rgba(255,255,255,0.1);
+                    border: none;
+                    border-radius: 25px;
+                    color: #fff;
+                    cursor: pointer;
+                ">Chiudi</button>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+    }
+
+    startGame(gameType) {
+        document.getElementById('gameSelectorModal')?.remove();
+        
+        switch(gameType) {
+            case 'wouldYouRather':
+                this.playWouldYouRather();
+                break;
+            case 'trueOrFalse':
+                this.playTrueOrFalse();
+                break;
+            case 'emojiStory':
+                this.playEmojiStory();
+                break;
+            case 'quickQuiz':
+                this.playQuickQuiz();
+                break;
+        }
+    }
+
+    playWouldYouRather() {
+        const questions = this.games.wouldYouRather.questions;
+        const q = questions[Math.floor(Math.random() * questions.length)];
+        
+        const modal = document.createElement('div');
+        modal.id = 'gameModal';
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.95);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        `;
+        
+        modal.innerHTML = `
+            <div style="text-align: center; padding: 30px; max-width: 500px;">
+                <h2 style="color: #fff; font-size: 28px; margin-bottom: 40px;">🤔 Preferiresti...</h2>
+                
+                <div style="display: flex; flex-direction: column; gap: 20px;">
+                    <button onclick="icebreakerGames.sendGameMessage('wouldYouRather', '${q[0]}', '${q[0]} vs ${q[1]}')" style="
+                        background: linear-gradient(135deg, #667eea, #764ba2);
+                        border: none;
+                        border-radius: 20px;
+                        padding: 25px 30px;
+                        color: #fff;
+                        font-size: 18px;
+                        cursor: pointer;
+                        transition: transform 0.2s;
+                    " onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">${q[0]}</button>
+                    
+                    <div style="color: #666; font-size: 20px;">oppure</div>
+                    
+                    <button onclick="icebreakerGames.sendGameMessage('wouldYouRather', '${q[1]}', '${q[0]} vs ${q[1]}')" style="
+                        background: linear-gradient(135deg, #f093fb, #f5576c);
+                        border: none;
+                        border-radius: 20px;
+                        padding: 25px 30px;
+                        color: #fff;
+                        font-size: 18px;
+                        cursor: pointer;
+                        transition: transform 0.2s;
+                    " onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">${q[1]}</button>
+                </div>
+                
+                <button onclick="document.getElementById('gameModal').remove()" style="
+                    margin-top: 30px;
+                    padding: 12px 30px;
+                    background: transparent;
+                    border: 1px solid rgba(255,255,255,0.3);
+                    border-radius: 25px;
+                    color: #fff;
+                    cursor: pointer;
+                ">Salta</button>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+    }
+
+    playTrueOrFalse() {
+        const statements = this.games.trueOrFalse.statements;
+        const s = statements[Math.floor(Math.random() * statements.length)];
+        
+        const modal = document.createElement('div');
+        modal.id = 'gameModal';
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.95);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        `;
+        
+        modal.innerHTML = `
+            <div style="text-align: center; padding: 30px; max-width: 500px;">
+                <h2 style="color: #fff; font-size: 28px; margin-bottom: 20px;">✅❌ Vero o Falso?</h2>
+                <p style="color: #888; margin-bottom: 30px;">Questa affermazione è vera o falsa per te?</p>
+                
+                <div style="
+                    background: rgba(255,255,255,0.1);
+                    border-radius: 20px;
+                    padding: 30px;
+                    margin-bottom: 30px;
+                ">
+                    <p style="color: #fff; font-size: 22px;">"${s}"</p>
+                </div>
+                
+                <div style="display: flex; gap: 20px; justify-content: center;">
+                    <button onclick="icebreakerGames.sendGameMessage('trueOrFalse', '✅ Vero', '${s}')" style="
+                        background: linear-gradient(135deg, #11998e, #38ef7d);
+                        border: none;
+                        border-radius: 20px;
+                        padding: 20px 40px;
+                        color: #fff;
+                        font-size: 20px;
+                        cursor: pointer;
+                    ">✅ Vero</button>
+                    
+                    <button onclick="icebreakerGames.sendGameMessage('trueOrFalse', '❌ Falso', '${s}')" style="
+                        background: linear-gradient(135deg, #e74c3c, #c0392b);
+                        border: none;
+                        border-radius: 20px;
+                        padding: 20px 40px;
+                        color: #fff;
+                        font-size: 20px;
+                        cursor: pointer;
+                    ">❌ Falso</button>
+                </div>
+                
+                <button onclick="document.getElementById('gameModal').remove()" style="
+                    margin-top: 30px;
+                    padding: 12px 30px;
+                    background: transparent;
+                    border: 1px solid rgba(255,255,255,0.3);
+                    border-radius: 25px;
+                    color: #fff;
+                    cursor: pointer;
+                ">Salta</button>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+    }
+
+    playEmojiStory() {
+        const prompts = this.games.emojiStory.prompts;
+        const p = prompts[Math.floor(Math.random() * prompts.length)];
+        
+        const modal = document.createElement('div');
+        modal.id = 'gameModal';
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.95);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        `;
+        
+        modal.innerHTML = `
+            <div style="text-align: center; padding: 30px; max-width: 500px; width: 90%;">
+                <h2 style="color: #fff; font-size: 28px; margin-bottom: 20px;">😎📖 Emoji Story</h2>
+                <p style="color: #888; margin-bottom: 30px;">${p} usando SOLO emoji!</p>
+                
+                <input type="text" id="emojiInput" placeholder="🎉🌴☀️🍕..." style="
+                    width: 100%;
+                    padding: 20px;
+                    font-size: 30px;
+                    text-align: center;
+                    background: rgba(255,255,255,0.1);
+                    border: none;
+                    border-radius: 15px;
+                    color: #fff;
+                ">
+                
+                <div style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 20px;">
+                    ${['😀','😎','🥰','😂','🤔','😴','🎉','🌴','☀️','🌙','🍕','🍷','🎸','⚽','🚗','✈️','🏠','💼','❤️','🔥'].map(e => `
+                        <button onclick="document.getElementById('emojiInput').value += '${e}'" style="
+                            background: rgba(255,255,255,0.1);
+                            border: none;
+                            border-radius: 10px;
+                            width: 45px;
+                            height: 45px;
+                            font-size: 22px;
+                            cursor: pointer;
+                        ">${e}</button>
+                    `).join('')}
+                </div>
+                
+                <button onclick="icebreakerGames.sendEmojiStory('${p}')" style="
+                    margin-top: 25px;
+                    padding: 15px 40px;
+                    background: linear-gradient(135deg, #667eea, #764ba2);
+                    border: none;
+                    border-radius: 25px;
+                    color: #fff;
+                    font-size: 16px;
+                    cursor: pointer;
+                ">Invia! 🚀</button>
+                
+                <button onclick="document.getElementById('gameModal').remove()" style="
+                    margin-top: 15px;
+                    margin-left: 10px;
+                    padding: 15px 30px;
+                    background: transparent;
+                    border: 1px solid rgba(255,255,255,0.3);
+                    border-radius: 25px;
+                    color: #fff;
+                    cursor: pointer;
+                ">Annulla</button>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+    }
+
+    sendEmojiStory(prompt) {
+        const emojis = document.getElementById('emojiInput')?.value;
+        if (!emojis) {
+            showToast('Inserisci almeno un emoji!', 'error');
+            return;
+        }
+        this.sendGameMessage('emojiStory', emojis, prompt);
+    }
+
+    playQuickQuiz() {
+        const questions = this.games.quickQuiz.questions;
+        const q = questions[Math.floor(Math.random() * questions.length)];
+        
+        const modal = document.createElement('div');
+        modal.id = 'gameModal';
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.95);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        `;
+        
+        modal.innerHTML = `
+            <div style="text-align: center; padding: 30px; max-width: 400px; width: 90%;">
+                <h2 style="color: #fff; font-size: 28px; margin-bottom: 30px;">⚡ Quiz Rapido</h2>
+                <p style="color: #fff; font-size: 22px; margin-bottom: 25px;">${q.q}</p>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    ${q.opts.map((opt, i) => `
+                        <button onclick="icebreakerGames.sendGameMessage('quickQuiz', '${opt}', '${q.q}')" style="
+                            background: linear-gradient(135deg, ${['#667eea, #764ba2', '#f093fb, #f5576c', '#11998e, #38ef7d', '#f9ca24, #f0932b'][i]});
+                            border: none;
+                            border-radius: 15px;
+                            padding: 20px;
+                            color: #fff;
+                            font-size: 16px;
+                            cursor: pointer;
+                        ">${opt}</button>
+                    `).join('')}
+                </div>
+                
+                <button onclick="document.getElementById('gameModal').remove()" style="
+                    margin-top: 25px;
+                    padding: 12px 30px;
+                    background: transparent;
+                    border: 1px solid rgba(255,255,255,0.3);
+                    border-radius: 25px;
+                    color: #fff;
+                    cursor: pointer;
+                ">Salta</button>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+    }
+
+    async sendGameMessage(gameType, answer, context) {
+        document.getElementById('gameModal')?.remove();
+        
+        if (!window.currentChatUserId || !window.currentUser) {
+            showToast('Errore: chat non attiva', 'error');
+            return;
+        }
+        
+        const chatId = [window.currentUser.uid, window.currentChatUserId].sort().join('_');
+        const gameNames = {
+            wouldYouRather: '🤔 Preferiresti',
+            trueOrFalse: '✅❌ Vero o Falso',
+            emojiStory: '😎📖 Emoji Story',
+            quickQuiz: '⚡ Quiz Rapido'
+        };
+        
+        try {
+            await firebase.firestore().collection('chats').doc(chatId).collection('messages').add({
+                senderId: window.currentUser.uid,
+                type: 'game',
+                gameType: gameType,
+                gameName: gameNames[gameType],
+                question: context,
+                answer: answer,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                read: false
+            });
+            
+            showToast('Risposta inviata! 🎮', 'success');
+        } catch (err) {
+            showToast('Errore invio', 'error');
+        }
+    }
+
+    // Render game message in chat
+    renderGameMessage(msg, isMine) {
+        return `
+            <div style="
+                background: linear-gradient(135deg, rgba(102,126,234,0.3), rgba(118,75,162,0.3));
+                border: 1px solid rgba(255,255,255,0.1);
+                border-radius: 20px;
+                padding: 15px 20px;
+                max-width: 280px;
+            ">
+                <div style="font-size: 12px; color: #888; margin-bottom: 8px;">${msg.gameName}</div>
+                <div style="font-size: 13px; color: #aaa; margin-bottom: 10px;">${msg.question}</div>
+                <div style="
+                    background: ${isMine ? 'linear-gradient(135deg, #667eea, #764ba2)' : 'rgba(255,255,255,0.1)'};
+                    padding: 12px 18px;
+                    border-radius: 15px;
+                    color: #fff;
+                    font-size: 16px;
+                    text-align: center;
+                ">${msg.answer}</div>
+            </div>
+        `;
+    }
+}
+
+const icebreakerGames = new IcebreakerGames();
+
+// ================================================
+// MESSAGE REACTIONS SYSTEM
+// ================================================
+
+class MessageReactions {
+    constructor() {
+        this.emojis = ['❤️', '😂', '😮', '😢', '😡', '👍'];
+        this.selectedMessageId = null;
+    }
+
+    // Add long-press detection to messages
+    addReactionListeners() {
+        document.querySelectorAll('.chat-message').forEach(msg => {
+            if (msg.dataset.reactionListener) return;
+            msg.dataset.reactionListener = 'true';
+            
+            let pressTimer;
+            
+            const startPress = (e) => {
+                pressTimer = setTimeout(() => {
+                    this.showReactionPicker(msg, e);
+                }, 500); // 500ms hold
+            };
+            
+            const endPress = () => {
+                clearTimeout(pressTimer);
+            };
+            
+            msg.addEventListener('mousedown', startPress);
+            msg.addEventListener('mouseup', endPress);
+            msg.addEventListener('mouseleave', endPress);
+            msg.addEventListener('touchstart', startPress);
+            msg.addEventListener('touchend', endPress);
+        });
+    }
+
+    showReactionPicker(msgElement, event) {
+        // Remove existing picker
+        document.getElementById('reactionPicker')?.remove();
+        
+        this.selectedMessageId = msgElement.dataset.messageId;
+        
+        const rect = msgElement.getBoundingClientRect();
+        
+        const picker = document.createElement('div');
+        picker.id = 'reactionPicker';
+        picker.style.cssText = `
+            position: fixed;
+            top: ${rect.top - 60}px;
+            left: ${Math.min(rect.left, window.innerWidth - 280)}px;
+            background: rgba(30, 30, 50, 0.98);
+            border-radius: 30px;
+            padding: 10px 15px;
+            display: flex;
+            gap: 8px;
+            z-index: 10000;
+            box-shadow: 0 5px 30px rgba(0,0,0,0.5);
+            animation: scaleIn 0.2s ease;
+        `;
+        
+        picker.innerHTML = this.emojis.map(emoji => `
+            <button onclick="messageReactions.addReaction('${emoji}')" style="
+                background: none;
+                border: none;
+                font-size: 28px;
+                cursor: pointer;
+                padding: 5px;
+                border-radius: 50%;
+                transition: all 0.2s;
+            " onmouseover="this.style.transform='scale(1.3)'" onmouseout="this.style.transform='scale(1)'">${emoji}</button>
+        `).join('');
+        
+        document.body.appendChild(picker);
+        
+        // Close on click outside
+        setTimeout(() => {
+            document.addEventListener('click', this.closePicker, { once: true });
+        }, 100);
+    }
+
+    closePicker() {
+        document.getElementById('reactionPicker')?.remove();
+    }
+
+    async addReaction(emoji) {
+        this.closePicker();
+        
+        if (!this.selectedMessageId || !window.currentUser || !window.currentChatUserId) return;
+        
+        const chatId = [window.currentUser.uid, window.currentChatUserId].sort().join('_');
+        
+        try {
+            const msgRef = firebase.firestore()
+                .collection('chats').doc(chatId)
+                .collection('messages').doc(this.selectedMessageId);
+            
+            // Get current reactions
+            const msgDoc = await msgRef.get();
+            const reactions = msgDoc.data()?.reactions || {};
+            
+            // Toggle reaction
+            if (reactions[window.currentUser.uid] === emoji) {
+                // Remove if same emoji
+                delete reactions[window.currentUser.uid];
+            } else {
+                // Add/change reaction
+                reactions[window.currentUser.uid] = emoji;
+            }
+            
+            await msgRef.update({ reactions });
+            
+            // Visual feedback
+            const msgEl = document.querySelector(`[data-message-id="${this.selectedMessageId}"]`);
+            if (msgEl) {
+                this.renderReactions(msgEl, reactions);
+            }
+            
+        } catch (err) {
+            console.error('Reaction error:', err);
+        }
+    }
+
+    renderReactions(msgElement, reactions) {
+        // Remove existing reactions display
+        msgElement.querySelector('.message-reactions')?.remove();
+        
+        if (!reactions || Object.keys(reactions).length === 0) return;
+        
+        // Count reactions
+        const counts = {};
+        Object.values(reactions).forEach(emoji => {
+            counts[emoji] = (counts[emoji] || 0) + 1;
+        });
+        
+        const reactionsDiv = document.createElement('div');
+        reactionsDiv.className = 'message-reactions';
+        reactionsDiv.style.cssText = `
+            display: flex;
+            gap: 5px;
+            margin-top: 5px;
+            flex-wrap: wrap;
+        `;
+        
+        Object.entries(counts).forEach(([emoji, count]) => {
+            const badge = document.createElement('span');
+            badge.style.cssText = `
+                background: rgba(255,255,255,0.1);
+                border-radius: 15px;
+                padding: 3px 8px;
+                font-size: 14px;
+                display: flex;
+                align-items: center;
+                gap: 3px;
+            `;
+            badge.innerHTML = `${emoji} ${count > 1 ? count : ''}`;
+            reactionsDiv.appendChild(badge);
+        });
+        
+        msgElement.appendChild(reactionsDiv);
+    }
+
+    // Called when rendering messages to show existing reactions
+    getReactionsHTML(reactions) {
+        if (!reactions || Object.keys(reactions).length === 0) return '';
+        
+        const counts = {};
+        Object.values(reactions).forEach(emoji => {
+            counts[emoji] = (counts[emoji] || 0) + 1;
+        });
+        
+        return `
+            <div class="message-reactions" style="
+                display: flex;
+                gap: 5px;
+                margin-top: 5px;
+                flex-wrap: wrap;
+            ">
+                ${Object.entries(counts).map(([emoji, count]) => `
+                    <span style="
+                        background: rgba(255,255,255,0.15);
+                        border-radius: 15px;
+                        padding: 3px 8px;
+                        font-size: 14px;
+                    ">${emoji}${count > 1 ? ' ' + count : ''}</span>
+                `).join('')}
+            </div>
+        `;
+    }
+}
+
+const messageReactions = new MessageReactions();
+
+// Add CSS animation
+const reactionStyle = document.createElement('style');
+reactionStyle.textContent = `
+    @keyframes scaleIn {
+        from { transform: scale(0.5); opacity: 0; }
+        to { transform: scale(1); opacity: 1; }
+    }
+`;
+document.head.appendChild(reactionStyle);
+
+// ================================================
+// VIDEO CHAT SYSTEM (WebRTC)
+// ================================================
+
+class VideoChat {
+    constructor() {
+        this.localStream = null;
+        this.remoteStream = null;
+        this.peerConnection = null;
+        this.callId = null;
+        this.callListener = null;
+        this.isCaller = false;
+        
+        // ICE servers for NAT traversal
+        this.iceServers = {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' }
+            ]
+        };
+    }
+
+    // Add video call button to chat
+    addVideoButton() {
+        const chatHeader = document.querySelector('.chat-header');
+        if (!chatHeader || document.getElementById('videoCallBtn')) return;
+        
+        const btn = document.createElement('button');
+        btn.id = 'videoCallBtn';
+        btn.innerHTML = '🎥';
+        btn.title = 'Videochiamata';
+        btn.style.cssText = `
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            font-size: 18px;
+            cursor: pointer;
+            margin-left: 10px;
+        `;
+        btn.onclick = () => this.startCall();
+        
+        chatHeader.appendChild(btn);
+    }
+
+    async startCall() {
+        if (!window.currentChatUserId || !window.currentUser) {
+            showToast('Seleziona una chat prima', 'error');
+            return;
+        }
+        
+        this.isCaller = true;
+        this.callId = [window.currentUser.uid, window.currentChatUserId].sort().join('_') + '_' + Date.now();
+        
+        try {
+            // Get local media
+            this.localStream = await navigator.mediaDevices.getUserMedia({ 
+                video: true, 
+                audio: true 
+            });
+            
+            this.showCallUI();
+            
+            // Create peer connection
+            this.peerConnection = new RTCPeerConnection(this.iceServers);
+            
+            // Add local tracks
+            this.localStream.getTracks().forEach(track => {
+                this.peerConnection.addTrack(track, this.localStream);
+            });
+            
+            // Handle remote tracks
+            this.peerConnection.ontrack = (event) => {
+                this.remoteStream = event.streams[0];
+                document.getElementById('remoteVideo').srcObject = this.remoteStream;
+            };
+            
+            // ICE candidates
+            this.peerConnection.onicecandidate = async (event) => {
+                if (event.candidate) {
+                    await firebase.firestore().collection('calls').doc(this.callId)
+                        .collection('callerCandidates').add(event.candidate.toJSON());
+                }
+            };
+            
+            // Create offer
+            const offer = await this.peerConnection.createOffer();
+            await this.peerConnection.setLocalDescription(offer);
+            
+            // Save call to Firebase
+            await firebase.firestore().collection('calls').doc(this.callId).set({
+                callerId: window.currentUser.uid,
+                receiverId: window.currentChatUserId,
+                offer: { type: offer.type, sdp: offer.sdp },
+                status: 'calling',
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            
+            // Listen for answer
+            this.callListener = firebase.firestore().collection('calls').doc(this.callId)
+                .onSnapshot(async (doc) => {
+                    const data = doc.data();
+                    if (!data) return;
+                    
+                    if (data.answer && !this.peerConnection.currentRemoteDescription) {
+                        await this.peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
+                    }
+                    
+                    if (data.status === 'rejected') {
+                        showToast('Chiamata rifiutata', 'info');
+                        this.endCall();
+                    }
+                });
+            
+            // Listen for ICE candidates from receiver
+            firebase.firestore().collection('calls').doc(this.callId)
+                .collection('receiverCandidates').onSnapshot((snapshot) => {
+                    snapshot.docChanges().forEach(async (change) => {
+                        if (change.type === 'added') {
+                            await this.peerConnection.addIceCandidate(new RTCIceCandidate(change.doc.data()));
+                        }
+                    });
+                });
+            
+            // Send notification to receiver
+            await this.sendCallNotification();
+            
+        } catch (err) {
+            console.error('Call error:', err);
+            showToast('Errore: ' + (err.message || 'Impossibile avviare'), 'error');
+            this.endCall();
+        }
+    }
+
+    async answerCall(callId) {
+        this.isCaller = false;
+        this.callId = callId;
+        
+        try {
+            // Get local media
+            this.localStream = await navigator.mediaDevices.getUserMedia({ 
+                video: true, 
+                audio: true 
+            });
+            
+            this.showCallUI();
+            
+            // Get call data
+            const callDoc = await firebase.firestore().collection('calls').doc(callId).get();
+            const callData = callDoc.data();
+            
+            // Create peer connection
+            this.peerConnection = new RTCPeerConnection(this.iceServers);
+            
+            // Add local tracks
+            this.localStream.getTracks().forEach(track => {
+                this.peerConnection.addTrack(track, this.localStream);
+            });
+            
+            // Handle remote tracks
+            this.peerConnection.ontrack = (event) => {
+                this.remoteStream = event.streams[0];
+                document.getElementById('remoteVideo').srcObject = this.remoteStream;
+            };
+            
+            // ICE candidates
+            this.peerConnection.onicecandidate = async (event) => {
+                if (event.candidate) {
+                    await firebase.firestore().collection('calls').doc(callId)
+                        .collection('receiverCandidates').add(event.candidate.toJSON());
+                }
+            };
+            
+            // Set remote description (offer)
+            await this.peerConnection.setRemoteDescription(new RTCSessionDescription(callData.offer));
+            
+            // Create answer
+            const answer = await this.peerConnection.createAnswer();
+            await this.peerConnection.setLocalDescription(answer);
+            
+            // Save answer to Firebase
+            await firebase.firestore().collection('calls').doc(callId).update({
+                answer: { type: answer.type, sdp: answer.sdp },
+                status: 'connected'
+            });
+            
+            // Listen for ICE candidates from caller
+            firebase.firestore().collection('calls').doc(callId)
+                .collection('callerCandidates').onSnapshot((snapshot) => {
+                    snapshot.docChanges().forEach(async (change) => {
+                        if (change.type === 'added') {
+                            await this.peerConnection.addIceCandidate(new RTCIceCandidate(change.doc.data()));
+                        }
+                    });
+                });
+            
+        } catch (err) {
+            console.error('Answer error:', err);
+            showToast('Errore risposta', 'error');
+            this.endCall();
+        }
+    }
+
+    showCallUI() {
+        const modal = document.createElement('div');
+        modal.id = 'videoCallModal';
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #000;
+            z-index: 10001;
+            display: flex;
+            flex-direction: column;
+        `;
+        
+        modal.innerHTML = `
+            <!-- Remote Video (fullscreen) -->
+            <video id="remoteVideo" autoplay playsinline style="
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+                background: #1a1a2e;
+            "></video>
+            
+            <!-- Local Video (small) -->
+            <video id="localVideo" autoplay playsinline muted style="
+                position: absolute;
+                bottom: 100px;
+                right: 20px;
+                width: 120px;
+                height: 160px;
+                border-radius: 15px;
+                object-fit: cover;
+                border: 3px solid #fff;
+                box-shadow: 0 5px 20px rgba(0,0,0,0.5);
+            "></video>
+            
+            <!-- Controls -->
+            <div style="
+                position: absolute;
+                bottom: 30px;
+                left: 50%;
+                transform: translateX(-50%);
+                display: flex;
+                gap: 20px;
+            ">
+                <button id="toggleMicBtn" onclick="videoChat.toggleMic()" style="
+                    background: rgba(255,255,255,0.2);
+                    border: none;
+                    border-radius: 50%;
+                    width: 60px;
+                    height: 60px;
+                    font-size: 24px;
+                    cursor: pointer;
+                    backdrop-filter: blur(10px);
+                ">🎤</button>
+                
+                <button onclick="videoChat.endCall()" style="
+                    background: #e74c3c;
+                    border: none;
+                    border-radius: 50%;
+                    width: 70px;
+                    height: 70px;
+                    font-size: 28px;
+                    cursor: pointer;
+                ">📞</button>
+                
+                <button id="toggleCamBtn" onclick="videoChat.toggleCamera()" style="
+                    background: rgba(255,255,255,0.2);
+                    border: none;
+                    border-radius: 50%;
+                    width: 60px;
+                    height: 60px;
+                    font-size: 24px;
+                    cursor: pointer;
+                    backdrop-filter: blur(10px);
+                ">📷</button>
+            </div>
+            
+            <!-- Call Status -->
+            <div id="callStatus" style="
+                position: absolute;
+                top: 50px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: rgba(0,0,0,0.5);
+                padding: 10px 25px;
+                border-radius: 25px;
+                color: #fff;
+                backdrop-filter: blur(10px);
+            ">Connessione in corso...</div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Set local video
+        document.getElementById('localVideo').srcObject = this.localStream;
+    }
+
+    toggleMic() {
+        const audioTrack = this.localStream?.getAudioTracks()[0];
+        if (audioTrack) {
+            audioTrack.enabled = !audioTrack.enabled;
+            document.getElementById('toggleMicBtn').innerHTML = audioTrack.enabled ? '🎤' : '🔇';
+            document.getElementById('toggleMicBtn').style.background = audioTrack.enabled ? 'rgba(255,255,255,0.2)' : '#e74c3c';
+        }
+    }
+
+    toggleCamera() {
+        const videoTrack = this.localStream?.getVideoTracks()[0];
+        if (videoTrack) {
+            videoTrack.enabled = !videoTrack.enabled;
+            document.getElementById('toggleCamBtn').innerHTML = videoTrack.enabled ? '📷' : '🚫';
+            document.getElementById('toggleCamBtn').style.background = videoTrack.enabled ? 'rgba(255,255,255,0.2)' : '#e74c3c';
+        }
+    }
+
+    async endCall() {
+        // Stop all tracks
+        if (this.localStream) {
+            this.localStream.getTracks().forEach(track => track.stop());
+        }
+        if (this.remoteStream) {
+            this.remoteStream.getTracks().forEach(track => track.stop());
+        }
+        
+        // Close peer connection
+        if (this.peerConnection) {
+            this.peerConnection.close();
+        }
+        
+        // Update call status
+        if (this.callId) {
+            await firebase.firestore().collection('calls').doc(this.callId).update({
+                status: 'ended',
+                endedAt: firebase.firestore.FieldValue.serverTimestamp()
+            }).catch(() => {});
+        }
+        
+        // Stop listener
+        if (this.callListener) {
+            this.callListener();
+        }
+        
+        // Reset
+        this.localStream = null;
+        this.remoteStream = null;
+        this.peerConnection = null;
+        this.callId = null;
+        this.callListener = null;
+        
+        // Remove UI
+        document.getElementById('videoCallModal')?.remove();
+        document.getElementById('incomingCallModal')?.remove();
+    }
+
+    async sendCallNotification() {
+        // In a real app, this would use FCM or similar
+        // For now, we store the call and the receiver listens for incoming calls
+        showToast('Chiamata in corso...', 'info');
+    }
+
+    // Listen for incoming calls
+    listenForCalls() {
+        if (!window.currentUser) return;
+        
+        firebase.firestore().collection('calls')
+            .where('receiverId', '==', window.currentUser.uid)
+            .where('status', '==', 'calling')
+            .onSnapshot(async (snapshot) => {
+                snapshot.docChanges().forEach(async (change) => {
+                    if (change.type === 'added') {
+                        const callData = change.doc.data();
+                        
+                        // Check if call is recent (within 30 seconds)
+                        const callTime = callData.createdAt?.toDate?.() || new Date();
+                        if (Date.now() - callTime.getTime() > 30000) return;
+                        
+                        // Show incoming call UI
+                        this.showIncomingCall(change.doc.id, callData.callerId);
+                    }
+                });
+            });
+    }
+
+    async showIncomingCall(callId, callerId) {
+        // Get caller info
+        const callerDoc = await firebase.firestore().collection('users').doc(callerId).get();
+        const caller = callerDoc.data() || {};
+        
+        const modal = document.createElement('div');
+        modal.id = 'incomingCallModal';
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.9);
+            z-index: 10002;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        `;
+        
+        modal.innerHTML = `
+            <div style="text-align: center;">
+                <div style="
+                    width: 120px;
+                    height: 120px;
+                    border-radius: 50%;
+                    background: url('${caller.photos?.[0] || 'https://via.placeholder.com/120'}') center/cover;
+                    margin: 0 auto 20px;
+                    border: 4px solid #667eea;
+                    animation: pulse 2s infinite;
+                "></div>
+                
+                <h2 style="color: #fff; margin-bottom: 10px;">${caller.name || 'Utente'}</h2>
+                <p style="color: #888; margin-bottom: 40px;">📹 Videochiamata in arrivo...</p>
+                
+                <div style="display: flex; gap: 40px;">
+                    <button onclick="videoChat.rejectCall('${callId}')" style="
+                        background: #e74c3c;
+                        border: none;
+                        border-radius: 50%;
+                        width: 70px;
+                        height: 70px;
+                        font-size: 30px;
+                        cursor: pointer;
+                    ">❌</button>
+                    
+                    <button onclick="document.getElementById('incomingCallModal').remove(); videoChat.answerCall('${callId}')" style="
+                        background: #27ae60;
+                        border: none;
+                        border-radius: 50%;
+                        width: 70px;
+                        height: 70px;
+                        font-size: 30px;
+                        cursor: pointer;
+                    ">📞</button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Play ringtone (optional - would need audio file)
+        // Auto reject after 30 seconds
+        setTimeout(() => {
+            if (document.getElementById('incomingCallModal')) {
+                this.rejectCall(callId);
+            }
+        }, 30000);
+    }
+
+    async rejectCall(callId) {
+        document.getElementById('incomingCallModal')?.remove();
+        
+        await firebase.firestore().collection('calls').doc(callId).update({
+            status: 'rejected'
+        }).catch(() => {});
+    }
+}
+
+const videoChat = new VideoChat();
+
+// ================================================
+// INITIALIZE NEW FEATURES
+// ================================================
+
+// Add buttons when chat opens
+const originalOpenChat = window.openChat;
+window.openChat = async function(userId) {
+    await originalOpenChat?.(userId);
+    
+    // Wait for chat to render
+    setTimeout(() => {
+        voiceMessages.addVoiceButton();
+        icebreakerGames.addGameButton();
+        videoChat.addVideoButton();
+    }, 500);
+};
+
+// Listen for video calls on auth state change
+firebase.auth().onAuthStateChanged((user) => {
+    if (user) {
+        setTimeout(() => {
+            videoChat.listenForCalls();
+        }, 2000);
+    }
+});
+
+// Update message rendering
+const originalRenderMessage = window.renderChatMessage;
+window.renderChatMessage = function(msg, isMine) {
+    // Handle voice messages
+    if (msg.type === 'voice') {
+        return voiceMessages.renderVoiceMessage(msg, isMine);
+    }
+    
+    // Handle game messages
+    if (msg.type === 'game') {
+        return icebreakerGames.renderGameMessage(msg, isMine);
+    }
+    
+    // Default text message with reactions
+    const reactionsHTML = messageReactions.getReactionsHTML(msg.reactions);
+    const baseHTML = originalRenderMessage ? originalRenderMessage(msg, isMine) : `
+        <div style="
+            background: ${isMine ? 'linear-gradient(135deg, #667eea, #764ba2)' : 'rgba(255,255,255,0.1)'};
+            padding: 12px 18px;
+            border-radius: 20px;
+            max-width: 280px;
+            word-wrap: break-word;
+        ">${msg.text || msg.message}</div>
+    `;
+    
+    return baseHTML + reactionsHTML;
+};
+
+// Add reaction listeners after messages load
+const originalLoadMessages = window.loadChatMessages;
+window.loadChatMessages = async function(chatId) {
+    await originalLoadMessages?.(chatId);
+    setTimeout(() => {
+        messageReactions.addReactionListeners();
+    }, 300);
+};
+
+console.log('✅ New features loaded: Voice, Stories, Games, Reactions, Video');
