@@ -10597,3 +10597,1601 @@ window.loadChatMessages = async function(chatId) {
 };
 
 console.log('✅ New features loaded: Voice, Stories, Games, Reactions, Video');
+
+// =============================================
+// READ RECEIPTS SYSTEM - WhatsApp Style
+// =============================================
+
+const ReadReceiptsSystem = {
+    // Message status: 'sent' (✓), 'delivered' (✓✓), 'read' (✓✓ blue)
+    
+    // Update message status in Firebase
+    async updateMessageStatus(chatId, messageId, status) {
+        if (!window.db) return;
+        
+        try {
+            await window.db.collection('chats').doc(chatId)
+                .collection('messages').doc(messageId)
+                .update({ status: status, statusUpdatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+        } catch (e) {
+            console.log('Status update error:', e);
+        }
+    },
+    
+    // Mark messages as read when chat is opened
+    async markMessagesAsRead(chatId, currentUserId) {
+        if (!window.db || !chatId || !currentUserId) return;
+        
+        try {
+            const messagesRef = window.db.collection('chats').doc(chatId).collection('messages');
+            const unreadMessages = await messagesRef
+                .where('senderId', '!=', currentUserId)
+                .where('status', 'in', ['sent', 'delivered'])
+                .get();
+            
+            const batch = window.db.batch();
+            unreadMessages.forEach(doc => {
+                batch.update(doc.ref, { 
+                    status: 'read', 
+                    readAt: firebase.firestore.FieldValue.serverTimestamp() 
+                });
+            });
+            
+            if (!unreadMessages.empty) {
+                await batch.commit();
+                console.log(`✅ Marked ${unreadMessages.size} messages as read`);
+            }
+        } catch (e) {
+            console.log('Mark as read error:', e);
+        }
+    },
+    
+    // Get status icon HTML
+    getStatusIcon(status, isMine) {
+        if (!isMine) return ''; // Only show for own messages
+        
+        const icons = {
+            'sending': '<span class="msg-status sending" style="margin-left:5px;font-size:12px;color:#888;">🕐</span>',
+            'sent': '<span class="msg-status sent" style="margin-left:5px;font-size:12px;color:#888;">✓</span>',
+            'delivered': '<span class="msg-status delivered" style="margin-left:5px;font-size:12px;color:#888;">✓✓</span>',
+            'read': '<span class="msg-status read" style="margin-left:5px;font-size:12px;color:#34B7F1;">✓✓</span>'
+        };
+        
+        return icons[status] || icons['sent'];
+    },
+    
+    // Enhanced status with animation
+    getAnimatedStatusIcon(status, isMine) {
+        if (!isMine) return '';
+        
+        const baseStyle = 'margin-left:6px;font-size:11px;display:inline-flex;align-items:center;';
+        
+        if (status === 'sending') {
+            return `<span style="${baseStyle}color:#888;">
+                <svg width="16" height="11" viewBox="0 0 16 11" style="animation:pulse 1s infinite;">
+                    <path fill="currentColor" d="M11.07.5l-1.41 1.41 3.54 3.54-3.54 3.54 1.41 1.41 4.95-4.95z" opacity="0.3"/>
+                </svg>
+            </span>`;
+        }
+        
+        if (status === 'sent') {
+            return `<span style="${baseStyle}color:#888;">
+                <svg width="16" height="11" viewBox="0 0 16 11">
+                    <path fill="currentColor" d="M6 9.5L1.5 5l1.41-1.41L6 6.67l7.09-7.08L14.5 1z"/>
+                </svg>
+            </span>`;
+        }
+        
+        if (status === 'delivered') {
+            return `<span style="${baseStyle}color:#888;">
+                <svg width="20" height="11" viewBox="0 0 20 11">
+                    <path fill="currentColor" d="M6 9.5L1.5 5l1.41-1.41L6 6.67l7.09-7.08L14.5 1z"/>
+                    <path fill="currentColor" d="M10 9.5L5.5 5l1.41-1.41L10 6.67l7.09-7.08L18.5 1z"/>
+                </svg>
+            </span>`;
+        }
+        
+        if (status === 'read') {
+            return `<span style="${baseStyle}color:#34B7F1;">
+                <svg width="20" height="11" viewBox="0 0 20 11">
+                    <path fill="currentColor" d="M6 9.5L1.5 5l1.41-1.41L6 6.67l7.09-7.08L14.5 1z"/>
+                    <path fill="currentColor" d="M10 9.5L5.5 5l1.41-1.41L10 6.67l7.09-7.08L18.5 1z"/>
+                </svg>
+            </span>`;
+        }
+        
+        return '';
+    }
+};
+
+// Make globally available
+window.ReadReceiptsSystem = ReadReceiptsSystem;
+
+// Add CSS animation for sending status
+const readReceiptStyles = document.createElement('style');
+readReceiptStyles.textContent = `
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.4; }
+    }
+    .msg-status.read {
+        color: #34B7F1 !important;
+    }
+`;
+document.head.appendChild(readReceiptStyles);
+
+console.log('✅ Read Receipts System loaded');
+
+
+// =============================================
+// ENHANCED SWIPE ANIMATIONS
+// =============================================
+
+const SwipeAnimations = {
+    // Initialize enhanced animations
+    init() {
+        this.addStyles();
+        console.log('✅ Swipe Animations initialized');
+    },
+    
+    addStyles() {
+        const style = document.createElement('style');
+        style.textContent = `
+            /* Enhanced Card Swipe Animations */
+            .swipe-card {
+                transition: transform 0.15s ease-out, opacity 0.15s ease-out;
+                will-change: transform;
+            }
+            
+            /* Like Animation - Fly Right with Heart Burst */
+            @keyframes swipeLike {
+                0% { transform: translateX(0) rotate(0deg); opacity: 1; }
+                50% { transform: translateX(50%) rotate(15deg); opacity: 0.8; }
+                100% { transform: translateX(150%) rotate(30deg); opacity: 0; }
+            }
+            
+            /* Nope Animation - Fly Left with X effect */
+            @keyframes swipeNope {
+                0% { transform: translateX(0) rotate(0deg); opacity: 1; }
+                50% { transform: translateX(-50%) rotate(-15deg); opacity: 0.8; }
+                100% { transform: translateX(-150%) rotate(-30deg); opacity: 0; }
+            }
+            
+            /* SuperLike Animation - Fly Up with Stars */
+            @keyframes swipeSuperLike {
+                0% { transform: translateY(0) scale(1); opacity: 1; }
+                50% { transform: translateY(-30%) scale(1.1); opacity: 0.9; }
+                100% { transform: translateY(-150%) scale(0.8); opacity: 0; }
+            }
+            
+            /* Heart Burst Effect */
+            @keyframes heartBurst {
+                0% { transform: scale(0); opacity: 1; }
+                50% { transform: scale(1.5); opacity: 0.8; }
+                100% { transform: scale(2); opacity: 0; }
+            }
+            
+            /* Star Burst Effect */
+            @keyframes starBurst {
+                0% { transform: scale(0) rotate(0deg); opacity: 1; }
+                100% { transform: scale(3) rotate(180deg); opacity: 0; }
+            }
+            
+            /* X Burst Effect */
+            @keyframes xBurst {
+                0% { transform: scale(0); opacity: 1; }
+                100% { transform: scale(2); opacity: 0; }
+            }
+            
+            /* Swipe Overlay Labels */
+            .swipe-label {
+                position: absolute;
+                top: 50%;
+                transform: translateY(-50%);
+                font-size: 48px;
+                font-weight: bold;
+                padding: 15px 30px;
+                border-radius: 15px;
+                border: 5px solid;
+                opacity: 0;
+                transition: opacity 0.15s ease;
+                z-index: 100;
+                text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            }
+            
+            .swipe-label.like {
+                right: 30px;
+                color: #4ade80;
+                border-color: #4ade80;
+                background: rgba(74, 222, 128, 0.2);
+            }
+            
+            .swipe-label.nope {
+                left: 30px;
+                color: #f87171;
+                border-color: #f87171;
+                background: rgba(248, 113, 113, 0.2);
+            }
+            
+            .swipe-label.superlike {
+                left: 50%;
+                transform: translate(-50%, -50%);
+                color: #60a5fa;
+                border-color: #60a5fa;
+                background: rgba(96, 165, 250, 0.2);
+            }
+            
+            /* Particle Effects Container */
+            .swipe-particles {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                pointer-events: none;
+                z-index: 9999;
+            }
+            
+            .particle {
+                position: absolute;
+                font-size: 30px;
+                animation: particleFly 1s ease-out forwards;
+            }
+            
+            @keyframes particleFly {
+                0% { transform: translate(0, 0) scale(1); opacity: 1; }
+                100% { transform: translate(var(--tx), var(--ty)) scale(0); opacity: 0; }
+            }
+            
+            /* Haptic Feedback Visual */
+            @keyframes hapticPulse {
+                0%, 100% { box-shadow: 0 0 0 0 rgba(255,255,255,0.4); }
+                50% { box-shadow: 0 0 0 10px rgba(255,255,255,0); }
+            }
+        `;
+        document.head.appendChild(style);
+    },
+    
+    // Create particle burst effect
+    createParticleBurst(type, x, y) {
+        const container = document.createElement('div');
+        container.className = 'swipe-particles';
+        document.body.appendChild(container);
+        
+        const particles = {
+            like: ['❤️', '💕', '💖', '💗', '💓', '✨'],
+            nope: ['❌', '👎', '💔', '😅'],
+            superlike: ['⭐', '🌟', '✨', '💫', '⚡', '🔥']
+        };
+        
+        const emojis = particles[type] || particles.like;
+        
+        for (let i = 0; i < 12; i++) {
+            const particle = document.createElement('div');
+            particle.className = 'particle';
+            particle.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+            particle.style.left = x + 'px';
+            particle.style.top = y + 'px';
+            particle.style.setProperty('--tx', (Math.random() - 0.5) * 300 + 'px');
+            particle.style.setProperty('--ty', (Math.random() - 0.5) * 300 + 'px');
+            container.appendChild(particle);
+        }
+        
+        setTimeout(() => container.remove(), 1000);
+    },
+    
+    // Animate like swipe
+    animateLike(card, callback) {
+        this.createParticleBurst('like', window.innerWidth * 0.7, window.innerHeight * 0.4);
+        card.style.animation = 'swipeLike 0.5s ease-out forwards';
+        
+        // Vibrate if available
+        if (navigator.vibrate) navigator.vibrate(50);
+        
+        setTimeout(() => {
+            if (callback) callback();
+        }, 450);
+    },
+    
+    // Animate nope swipe
+    animateNope(card, callback) {
+        this.createParticleBurst('nope', window.innerWidth * 0.3, window.innerHeight * 0.4);
+        card.style.animation = 'swipeNope 0.5s ease-out forwards';
+        
+        if (navigator.vibrate) navigator.vibrate([30, 20, 30]);
+        
+        setTimeout(() => {
+            if (callback) callback();
+        }, 450);
+    },
+    
+    // Animate superlike swipe
+    animateSuperLike(card, callback) {
+        this.createParticleBurst('superlike', window.innerWidth * 0.5, window.innerHeight * 0.3);
+        card.style.animation = 'swipeSuperLike 0.6s ease-out forwards';
+        
+        if (navigator.vibrate) navigator.vibrate([50, 30, 50, 30, 50]);
+        
+        setTimeout(() => {
+            if (callback) callback();
+        }, 550);
+    },
+    
+    // Show swipe label during drag
+    showSwipeLabel(card, direction, intensity) {
+        let label = card.querySelector('.swipe-label.' + direction);
+        if (!label) {
+            label = document.createElement('div');
+            label.className = 'swipe-label ' + direction;
+            label.textContent = direction === 'like' ? 'LIKE' : direction === 'nope' ? 'NOPE' : '⭐ SUPER';
+            card.appendChild(label);
+        }
+        label.style.opacity = Math.min(intensity / 50, 1);
+    },
+    
+    // Hide all labels
+    hideSwipeLabels(card) {
+        card.querySelectorAll('.swipe-label').forEach(l => l.style.opacity = 0);
+    }
+};
+
+// Initialize
+SwipeAnimations.init();
+window.SwipeAnimations = SwipeAnimations;
+
+
+// =============================================
+// SKELETON LOADING SYSTEM
+// =============================================
+
+const SkeletonLoader = {
+    init() {
+        this.addStyles();
+        console.log('✅ Skeleton Loader initialized');
+    },
+    
+    addStyles() {
+        const style = document.createElement('style');
+        style.textContent = `
+            /* Skeleton Base */
+            .skeleton {
+                background: linear-gradient(90deg, 
+                    rgba(255,255,255,0.05) 25%, 
+                    rgba(255,255,255,0.15) 50%, 
+                    rgba(255,255,255,0.05) 75%);
+                background-size: 200% 100%;
+                animation: skeletonShimmer 1.5s infinite;
+                border-radius: 8px;
+            }
+            
+            @keyframes skeletonShimmer {
+                0% { background-position: 200% 0; }
+                100% { background-position: -200% 0; }
+            }
+            
+            /* Profile Card Skeleton */
+            .skeleton-card {
+                background: #1a1a2e;
+                border-radius: 20px;
+                overflow: hidden;
+                width: 100%;
+                max-width: 400px;
+                margin: 0 auto;
+            }
+            
+            .skeleton-card-image {
+                width: 100%;
+                height: 400px;
+                background: linear-gradient(90deg, 
+                    #1e1e35 25%, 
+                    #2a2a45 50%, 
+                    #1e1e35 75%);
+                background-size: 200% 100%;
+                animation: skeletonShimmer 1.5s infinite;
+            }
+            
+            .skeleton-card-info {
+                padding: 20px;
+            }
+            
+            .skeleton-name {
+                height: 28px;
+                width: 60%;
+                margin-bottom: 12px;
+            }
+            
+            .skeleton-bio {
+                height: 16px;
+                width: 90%;
+                margin-bottom: 8px;
+            }
+            
+            .skeleton-bio.short {
+                width: 70%;
+            }
+            
+            .skeleton-tags {
+                display: flex;
+                gap: 10px;
+                margin-top: 15px;
+            }
+            
+            .skeleton-tag {
+                height: 30px;
+                width: 80px;
+                border-radius: 15px;
+            }
+            
+            /* Chat List Skeleton */
+            .skeleton-chat-item {
+                display: flex;
+                align-items: center;
+                padding: 15px;
+                gap: 15px;
+            }
+            
+            .skeleton-avatar {
+                width: 55px;
+                height: 55px;
+                border-radius: 50%;
+                flex-shrink: 0;
+            }
+            
+            .skeleton-chat-content {
+                flex: 1;
+            }
+            
+            .skeleton-chat-name {
+                height: 18px;
+                width: 40%;
+                margin-bottom: 8px;
+            }
+            
+            .skeleton-chat-msg {
+                height: 14px;
+                width: 75%;
+            }
+            
+            /* Message Skeleton */
+            .skeleton-message {
+                display: flex;
+                margin: 10px 15px;
+            }
+            
+            .skeleton-message.sent {
+                justify-content: flex-end;
+            }
+            
+            .skeleton-message-bubble {
+                height: 40px;
+                width: 200px;
+                border-radius: 18px;
+            }
+            
+            .skeleton-message.sent .skeleton-message-bubble {
+                background: linear-gradient(90deg, 
+                    rgba(220, 38, 38, 0.3) 25%, 
+                    rgba(220, 38, 38, 0.5) 50%, 
+                    rgba(220, 38, 38, 0.3) 75%);
+                background-size: 200% 100%;
+                animation: skeletonShimmer 1.5s infinite;
+            }
+            
+            /* Feed Post Skeleton */
+            .skeleton-post {
+                background: rgba(255,255,255,0.05);
+                border-radius: 15px;
+                padding: 15px;
+                margin-bottom: 15px;
+            }
+            
+            .skeleton-post-header {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                margin-bottom: 15px;
+            }
+            
+            .skeleton-post-avatar {
+                width: 45px;
+                height: 45px;
+                border-radius: 50%;
+            }
+            
+            .skeleton-post-name {
+                height: 16px;
+                width: 120px;
+            }
+            
+            .skeleton-post-time {
+                height: 12px;
+                width: 60px;
+                margin-top: 5px;
+            }
+            
+            .skeleton-post-image {
+                width: 100%;
+                height: 300px;
+                border-radius: 12px;
+                margin-bottom: 15px;
+            }
+            
+            .skeleton-post-text {
+                height: 14px;
+                width: 100%;
+                margin-bottom: 8px;
+            }
+            
+            /* Stories Skeleton */
+            .skeleton-story {
+                display: inline-flex;
+                flex-direction: column;
+                align-items: center;
+                margin-right: 15px;
+            }
+            
+            .skeleton-story-avatar {
+                width: 65px;
+                height: 65px;
+                border-radius: 50%;
+                margin-bottom: 8px;
+            }
+            
+            .skeleton-story-name {
+                height: 12px;
+                width: 50px;
+            }
+        `;
+        document.head.appendChild(style);
+    },
+    
+    // Generate Profile Card Skeleton
+    profileCard() {
+        return `
+            <div class="skeleton-card">
+                <div class="skeleton-card-image"></div>
+                <div class="skeleton-card-info">
+                    <div class="skeleton skeleton-name"></div>
+                    <div class="skeleton skeleton-bio"></div>
+                    <div class="skeleton skeleton-bio short"></div>
+                    <div class="skeleton-tags">
+                        <div class="skeleton skeleton-tag"></div>
+                        <div class="skeleton skeleton-tag"></div>
+                        <div class="skeleton skeleton-tag"></div>
+                    </div>
+                </div>
+            </div>
+        `;
+    },
+    
+    // Generate Chat List Skeleton
+    chatList(count = 5) {
+        let html = '';
+        for (let i = 0; i < count; i++) {
+            html += `
+                <div class="skeleton-chat-item">
+                    <div class="skeleton skeleton-avatar"></div>
+                    <div class="skeleton-chat-content">
+                        <div class="skeleton skeleton-chat-name"></div>
+                        <div class="skeleton skeleton-chat-msg"></div>
+                    </div>
+                </div>
+            `;
+        }
+        return html;
+    },
+    
+    // Generate Messages Skeleton
+    messages(count = 6) {
+        let html = '';
+        for (let i = 0; i < count; i++) {
+            const sent = i % 3 === 0;
+            html += `
+                <div class="skeleton-message ${sent ? 'sent' : ''}">
+                    <div class="skeleton skeleton-message-bubble"></div>
+                </div>
+            `;
+        }
+        return html;
+    },
+    
+    // Generate Feed Posts Skeleton
+    feedPosts(count = 3) {
+        let html = '';
+        for (let i = 0; i < count; i++) {
+            html += `
+                <div class="skeleton-post">
+                    <div class="skeleton-post-header">
+                        <div class="skeleton skeleton-post-avatar"></div>
+                        <div>
+                            <div class="skeleton skeleton-post-name"></div>
+                            <div class="skeleton skeleton-post-time"></div>
+                        </div>
+                    </div>
+                    <div class="skeleton skeleton-post-image"></div>
+                    <div class="skeleton skeleton-post-text"></div>
+                    <div class="skeleton skeleton-post-text" style="width:60%"></div>
+                </div>
+            `;
+        }
+        return html;
+    },
+    
+    // Generate Stories Skeleton
+    stories(count = 5) {
+        let html = '<div style="display:flex;overflow-x:auto;padding:10px 0;">';
+        for (let i = 0; i < count; i++) {
+            html += `
+                <div class="skeleton-story">
+                    <div class="skeleton skeleton-story-avatar"></div>
+                    <div class="skeleton skeleton-story-name"></div>
+                </div>
+            `;
+        }
+        html += '</div>';
+        return html;
+    },
+    
+    // Show skeleton in container
+    show(container, type, count) {
+        if (typeof container === 'string') {
+            container = document.querySelector(container);
+        }
+        if (!container) return;
+        
+        switch(type) {
+            case 'profile':
+                container.innerHTML = this.profileCard();
+                break;
+            case 'chats':
+                container.innerHTML = this.chatList(count || 5);
+                break;
+            case 'messages':
+                container.innerHTML = this.messages(count || 6);
+                break;
+            case 'feed':
+                container.innerHTML = this.feedPosts(count || 3);
+                break;
+            case 'stories':
+                container.innerHTML = this.stories(count || 5);
+                break;
+        }
+    }
+};
+
+// Initialize
+SkeletonLoader.init();
+window.SkeletonLoader = SkeletonLoader;
+
+
+// =============================================
+// PROFILE PROMPTS SYSTEM - Hinge Style
+// =============================================
+
+const ProfilePrompts = {
+    // Available prompts
+    prompts: [
+        // About Me
+        { id: 'unpopular_opinion', emoji: '🔥', text: 'La mia opinione impopolare è...', category: 'personality' },
+        { id: 'cant_live_without', emoji: '❤️', text: 'Non posso vivere senza...', category: 'lifestyle' },
+        { id: 'perfect_sunday', emoji: '☀️', text: 'La mia domenica perfetta...', category: 'lifestyle' },
+        { id: 'guilty_pleasure', emoji: '🤫', text: 'Il mio guilty pleasure è...', category: 'personality' },
+        { id: 'looking_for', emoji: '🔍', text: 'Sto cercando qualcuno che...', category: 'dating' },
+        
+        // Fun Facts
+        { id: 'never_guess', emoji: '🎯', text: 'Non indovineresti mai che io...', category: 'fun' },
+        { id: 'useless_skill', emoji: '🏆', text: 'Il mio talento più inutile è...', category: 'fun' },
+        { id: 'worst_idea', emoji: '💡', text: 'La mia peggiore idea è stata...', category: 'fun' },
+        { id: 'best_travel', emoji: '✈️', text: 'Il mio viaggio più bello...', category: 'lifestyle' },
+        { id: 'food_die_for', emoji: '🍕', text: 'Un cibo per cui morirei...', category: 'lifestyle' },
+        
+        // Dating
+        { id: 'date_idea', emoji: '💑', text: 'Il mio appuntamento ideale...', category: 'dating' },
+        { id: 'green_flag', emoji: '🟢', text: 'Una green flag per me è...', category: 'dating' },
+        { id: 'love_language', emoji: '💕', text: 'Il mio linguaggio dell\'amore è...', category: 'dating' },
+        { id: 'deal_breaker', emoji: '🚩', text: 'Un deal breaker per me è...', category: 'dating' },
+        { id: 'relationship_goal', emoji: '🎯', text: 'Il mio obiettivo in una relazione...', category: 'dating' },
+        
+        // Deep
+        { id: 'life_lesson', emoji: '📚', text: 'La lezione più importante che ho imparato...', category: 'deep' },
+        { id: 'five_years', emoji: '🔮', text: 'Tra 5 anni mi vedo...', category: 'deep' },
+        { id: 'change_world', emoji: '🌍', text: 'Se potessi cambiare una cosa del mondo...', category: 'deep' },
+        { id: 'grateful_for', emoji: '🙏', text: 'Sono grato per...', category: 'deep' },
+        { id: 'believe_in', emoji: '✨', text: 'Credo fermamente che...', category: 'deep' },
+        
+        // Preferences
+        { id: 'morning_night', emoji: '🌙', text: 'Sono più tipo mattiniero o nottambulo...', category: 'preferences' },
+        { id: 'introvert_extrovert', emoji: '🎭', text: 'Introverso o estroverso? Io sono...', category: 'preferences' },
+        { id: 'beach_mountain', emoji: '🏔️', text: 'Mare o montagna? Assolutamente...', category: 'preferences' },
+        { id: 'cook_order', emoji: '👨‍🍳', text: 'Cucinare o ordinare? Di solito...', category: 'preferences' }
+    ],
+    
+    init() {
+        this.addStyles();
+        console.log('✅ Profile Prompts initialized');
+    },
+    
+    addStyles() {
+        const style = document.createElement('style');
+        style.textContent = `
+            /* Prompt Card */
+            .prompt-card {
+                background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
+                border-radius: 16px;
+                padding: 20px;
+                margin: 15px 0;
+                border: 1px solid rgba(255,255,255,0.1);
+                transition: all 0.3s ease;
+            }
+            
+            .prompt-card:hover {
+                transform: translateY(-2px);
+                border-color: rgba(220, 38, 38, 0.5);
+                box-shadow: 0 10px 30px rgba(220, 38, 38, 0.2);
+            }
+            
+            .prompt-question {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                color: #888;
+                font-size: 14px;
+                margin-bottom: 10px;
+            }
+            
+            .prompt-emoji {
+                font-size: 20px;
+            }
+            
+            .prompt-answer {
+                color: #fff;
+                font-size: 18px;
+                line-height: 1.5;
+                font-weight: 500;
+            }
+            
+            /* Prompt Selector Modal */
+            .prompt-selector-modal {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0,0,0,0.95);
+                z-index: 10000;
+                display: flex;
+                flex-direction: column;
+                padding: 20px;
+            }
+            
+            .prompt-selector-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding-bottom: 15px;
+                border-bottom: 1px solid rgba(255,255,255,0.1);
+            }
+            
+            .prompt-selector-title {
+                color: #fff;
+                font-size: 20px;
+                font-weight: bold;
+            }
+            
+            .prompt-selector-close {
+                background: none;
+                border: none;
+                color: #fff;
+                font-size: 28px;
+                cursor: pointer;
+            }
+            
+            .prompt-categories {
+                display: flex;
+                gap: 10px;
+                padding: 15px 0;
+                overflow-x: auto;
+            }
+            
+            .prompt-category-btn {
+                padding: 8px 16px;
+                border-radius: 20px;
+                border: 1px solid rgba(255,255,255,0.2);
+                background: transparent;
+                color: #888;
+                cursor: pointer;
+                white-space: nowrap;
+                transition: all 0.3s;
+            }
+            
+            .prompt-category-btn.active {
+                background: linear-gradient(135deg, #dc2626, #f97316);
+                border-color: transparent;
+                color: #fff;
+            }
+            
+            .prompt-list {
+                flex: 1;
+                overflow-y: auto;
+                padding: 15px 0;
+            }
+            
+            .prompt-option {
+                display: flex;
+                align-items: center;
+                gap: 15px;
+                padding: 18px;
+                background: rgba(255,255,255,0.05);
+                border-radius: 12px;
+                margin-bottom: 10px;
+                cursor: pointer;
+                transition: all 0.3s;
+            }
+            
+            .prompt-option:hover {
+                background: rgba(255,255,255,0.1);
+                transform: translateX(5px);
+            }
+            
+            .prompt-option-emoji {
+                font-size: 28px;
+            }
+            
+            .prompt-option-text {
+                color: #fff;
+                font-size: 16px;
+            }
+            
+            /* Prompt Answer Input */
+            .prompt-answer-modal {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0,0,0,0.95);
+                z-index: 10001;
+                display: flex;
+                flex-direction: column;
+                padding: 20px;
+            }
+            
+            .prompt-answer-input {
+                background: rgba(255,255,255,0.1);
+                border: 2px solid rgba(255,255,255,0.2);
+                border-radius: 16px;
+                padding: 20px;
+                color: #fff;
+                font-size: 18px;
+                min-height: 150px;
+                resize: none;
+                margin: 20px 0;
+            }
+            
+            .prompt-answer-input:focus {
+                outline: none;
+                border-color: #dc2626;
+            }
+            
+            .prompt-char-count {
+                color: #888;
+                text-align: right;
+                font-size: 14px;
+            }
+            
+            .prompt-save-btn {
+                background: linear-gradient(135deg, #dc2626, #f97316);
+                border: none;
+                border-radius: 25px;
+                padding: 15px 30px;
+                color: #fff;
+                font-size: 16px;
+                font-weight: bold;
+                cursor: pointer;
+                margin-top: auto;
+            }
+        `;
+        document.head.appendChild(style);
+    },
+    
+    // Render prompts on profile
+    renderPrompts(userPrompts) {
+        if (!userPrompts || userPrompts.length === 0) return '';
+        
+        let html = '<div class="profile-prompts">';
+        
+        userPrompts.forEach(up => {
+            const prompt = this.prompts.find(p => p.id === up.promptId);
+            if (prompt && up.answer) {
+                html += `
+                    <div class="prompt-card">
+                        <div class="prompt-question">
+                            <span class="prompt-emoji">${prompt.emoji}</span>
+                            <span>${prompt.text}</span>
+                        </div>
+                        <div class="prompt-answer">${up.answer}</div>
+                    </div>
+                `;
+            }
+        });
+        
+        html += '</div>';
+        return html;
+    },
+    
+    // Open prompt selector
+    openSelector(onSelect) {
+        const modal = document.createElement('div');
+        modal.className = 'prompt-selector-modal';
+        modal.id = 'promptSelectorModal';
+        
+        const categories = [
+            { id: 'all', name: 'Tutti' },
+            { id: 'personality', name: '🎭 Personalità' },
+            { id: 'lifestyle', name: '☀️ Lifestyle' },
+            { id: 'dating', name: '💕 Dating' },
+            { id: 'fun', name: '🎉 Fun' },
+            { id: 'deep', name: '✨ Deep' },
+            { id: 'preferences', name: '⚖️ Preferenze' }
+        ];
+        
+        modal.innerHTML = `
+            <div class="prompt-selector-header">
+                <span class="prompt-selector-title">Scegli un Prompt</span>
+                <button class="prompt-selector-close" onclick="document.getElementById('promptSelectorModal').remove()">×</button>
+            </div>
+            
+            <div class="prompt-categories">
+                ${categories.map(c => `
+                    <button class="prompt-category-btn ${c.id === 'all' ? 'active' : ''}" 
+                            onclick="ProfilePrompts.filterCategory('${c.id}')">${c.name}</button>
+                `).join('')}
+            </div>
+            
+            <div class="prompt-list" id="promptList">
+                ${this.prompts.map(p => `
+                    <div class="prompt-option" data-category="${p.category}" 
+                         onclick="ProfilePrompts.selectPrompt('${p.id}')">
+                        <span class="prompt-option-emoji">${p.emoji}</span>
+                        <span class="prompt-option-text">${p.text}</span>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+        
+        this._onSelect = onSelect;
+        document.body.appendChild(modal);
+    },
+    
+    filterCategory(category) {
+        document.querySelectorAll('.prompt-category-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.textContent.toLowerCase().includes(category) || 
+                (category === 'all' && btn.textContent === 'Tutti'));
+        });
+        
+        document.querySelectorAll('.prompt-option').forEach(opt => {
+            if (category === 'all') {
+                opt.style.display = 'flex';
+            } else {
+                opt.style.display = opt.dataset.category === category ? 'flex' : 'none';
+            }
+        });
+    },
+    
+    selectPrompt(promptId) {
+        const prompt = this.prompts.find(p => p.id === promptId);
+        if (!prompt) return;
+        
+        document.getElementById('promptSelectorModal')?.remove();
+        this.openAnswerModal(prompt);
+    },
+    
+    openAnswerModal(prompt) {
+        const modal = document.createElement('div');
+        modal.className = 'prompt-answer-modal';
+        modal.id = 'promptAnswerModal';
+        
+        modal.innerHTML = `
+            <div class="prompt-selector-header">
+                <span class="prompt-selector-title">${prompt.emoji} ${prompt.text}</span>
+                <button class="prompt-selector-close" onclick="document.getElementById('promptAnswerModal').remove()">×</button>
+            </div>
+            
+            <textarea class="prompt-answer-input" id="promptAnswerInput" 
+                      maxlength="250" placeholder="Scrivi la tua risposta..."
+                      oninput="ProfilePrompts.updateCharCount()"></textarea>
+            
+            <div class="prompt-char-count"><span id="charCount">0</span>/250</div>
+            
+            <button class="prompt-save-btn" onclick="ProfilePrompts.saveAnswer('${prompt.id}')">
+                Salva Risposta
+            </button>
+        `;
+        
+        document.body.appendChild(modal);
+        document.getElementById('promptAnswerInput').focus();
+    },
+    
+    updateCharCount() {
+        const input = document.getElementById('promptAnswerInput');
+        document.getElementById('charCount').textContent = input.value.length;
+    },
+    
+    async saveAnswer(promptId) {
+        const answer = document.getElementById('promptAnswerInput')?.value.trim();
+        if (!answer) {
+            alert('Scrivi una risposta!');
+            return;
+        }
+        
+        const prompt = this.prompts.find(p => p.id === promptId);
+        
+        // Save to Firebase
+        if (window.db && window.currentUser) {
+            try {
+                const userRef = window.db.collection('users').doc(window.currentUser.id);
+                const userDoc = await userRef.get();
+                const userData = userDoc.data() || {};
+                
+                let prompts = userData.prompts || [];
+                const existingIndex = prompts.findIndex(p => p.promptId === promptId);
+                
+                if (existingIndex >= 0) {
+                    prompts[existingIndex].answer = answer;
+                } else {
+                    prompts.push({ promptId, answer, createdAt: new Date() });
+                }
+                
+                // Max 3 prompts
+                if (prompts.length > 3) {
+                    prompts = prompts.slice(-3);
+                }
+                
+                await userRef.update({ prompts });
+                window.currentUser.prompts = prompts;
+                
+                console.log('✅ Prompt saved');
+            } catch (e) {
+                console.log('Save prompt error:', e);
+            }
+        }
+        
+        document.getElementById('promptAnswerModal')?.remove();
+        
+        if (this._onSelect) {
+            this._onSelect({ promptId, answer });
+        }
+    }
+};
+
+// Initialize
+ProfilePrompts.init();
+window.ProfilePrompts = ProfilePrompts;
+
+
+// =============================================
+// MOOD STATUS SYSTEM - What are you looking for today?
+// =============================================
+
+const MoodStatus = {
+    moods: [
+        { id: 'chat', emoji: '💬', label: 'Voglia di chattare', color: '#60a5fa', description: 'Conversazioni leggere' },
+        { id: 'date', emoji: '💑', label: 'Appuntamento', color: '#f472b6', description: 'Voglio uscire!' },
+        { id: 'serious', emoji: '❤️', label: 'Relazione seria', color: '#dc2626', description: 'Cerco qualcosa di vero' },
+        { id: 'friends', emoji: '🤝', label: 'Nuove amicizie', color: '#34d399', description: 'Conosciamoci!' },
+        { id: 'adventure', emoji: '🎢', label: 'Avventura', color: '#f97316', description: 'Qualcosa di spontaneo' },
+        { id: 'chill', emoji: '😌', label: 'Relax', color: '#a78bfa', description: 'Netflix & chill vibes' }
+    ],
+    
+    init() {
+        this.addStyles();
+        console.log('✅ Mood Status initialized');
+    },
+    
+    addStyles() {
+        const style = document.createElement('style');
+        style.textContent = `
+            /* Mood Badge on Profile */
+            .mood-badge {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                padding: 6px 12px;
+                border-radius: 20px;
+                font-size: 13px;
+                font-weight: 500;
+                animation: moodPulse 2s infinite;
+            }
+            
+            @keyframes moodPulse {
+                0%, 100% { opacity: 1; }
+                50% { opacity: 0.8; }
+            }
+            
+            .mood-badge-emoji {
+                font-size: 16px;
+            }
+            
+            /* Mood Selector */
+            .mood-selector-modal {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0,0,0,0.95);
+                z-index: 10000;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                padding: 20px;
+            }
+            
+            .mood-selector-title {
+                color: #fff;
+                font-size: 24px;
+                font-weight: bold;
+                margin-bottom: 10px;
+            }
+            
+            .mood-selector-subtitle {
+                color: #888;
+                font-size: 16px;
+                margin-bottom: 30px;
+            }
+            
+            .mood-options {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 15px;
+                max-width: 400px;
+                width: 100%;
+            }
+            
+            .mood-option {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                padding: 25px 15px;
+                border-radius: 20px;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                border: 2px solid transparent;
+                position: relative;
+                overflow: hidden;
+            }
+            
+            .mood-option::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                opacity: 0.15;
+                transition: opacity 0.3s;
+            }
+            
+            .mood-option:hover {
+                transform: scale(1.05);
+            }
+            
+            .mood-option:hover::before {
+                opacity: 0.25;
+            }
+            
+            .mood-option.selected {
+                border-color: currentColor;
+                transform: scale(1.05);
+            }
+            
+            .mood-option.selected::after {
+                content: '✓';
+                position: absolute;
+                top: 8px;
+                right: 8px;
+                background: currentColor;
+                color: #000;
+                width: 20px;
+                height: 20px;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 12px;
+                font-weight: bold;
+            }
+            
+            .mood-emoji {
+                font-size: 40px;
+                margin-bottom: 10px;
+            }
+            
+            .mood-label {
+                color: #fff;
+                font-size: 14px;
+                font-weight: 600;
+                text-align: center;
+            }
+            
+            .mood-description {
+                color: rgba(255,255,255,0.6);
+                font-size: 12px;
+                margin-top: 5px;
+                text-align: center;
+            }
+            
+            .mood-save-btn {
+                margin-top: 30px;
+                padding: 15px 50px;
+                background: linear-gradient(135deg, #dc2626, #f97316);
+                border: none;
+                border-radius: 30px;
+                color: #fff;
+                font-size: 16px;
+                font-weight: bold;
+                cursor: pointer;
+                transition: all 0.3s;
+            }
+            
+            .mood-save-btn:hover {
+                transform: scale(1.05);
+                box-shadow: 0 10px 30px rgba(220, 38, 38, 0.4);
+            }
+            
+            .mood-skip-btn {
+                margin-top: 15px;
+                background: none;
+                border: none;
+                color: #888;
+                cursor: pointer;
+                font-size: 14px;
+            }
+            
+            /* Mood indicator on discovery cards */
+            .card-mood-indicator {
+                position: absolute;
+                top: 15px;
+                left: 15px;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                padding: 8px 14px;
+                border-radius: 25px;
+                backdrop-filter: blur(10px);
+                font-size: 13px;
+                font-weight: 500;
+                z-index: 10;
+            }
+            
+            /* Header mood button */
+            .header-mood-btn {
+                display: flex;
+                align-items: center;
+                gap: 5px;
+                padding: 6px 12px;
+                border-radius: 20px;
+                background: rgba(255,255,255,0.1);
+                border: none;
+                cursor: pointer;
+                font-size: 14px;
+                transition: all 0.3s;
+            }
+            
+            .header-mood-btn:hover {
+                background: rgba(255,255,255,0.2);
+            }
+        `;
+        document.head.appendChild(style);
+    },
+    
+    // Get mood by ID
+    getMood(moodId) {
+        return this.moods.find(m => m.id === moodId);
+    },
+    
+    // Render mood badge
+    renderBadge(moodId, size = 'normal') {
+        const mood = this.getMood(moodId);
+        if (!mood) return '';
+        
+        const padding = size === 'small' ? '4px 10px' : '6px 12px';
+        const fontSize = size === 'small' ? '12px' : '13px';
+        
+        return `
+            <span class="mood-badge" style="
+                background: ${mood.color}22;
+                color: ${mood.color};
+                padding: ${padding};
+                font-size: ${fontSize};
+            ">
+                <span class="mood-badge-emoji">${mood.emoji}</span>
+                <span>${mood.label}</span>
+            </span>
+        `;
+    },
+    
+    // Render mood indicator on profile card
+    renderCardIndicator(moodId) {
+        const mood = this.getMood(moodId);
+        if (!mood) return '';
+        
+        return `
+            <div class="card-mood-indicator" style="
+                background: ${mood.color}33;
+                color: ${mood.color};
+                border: 1px solid ${mood.color}55;
+            ">
+                <span>${mood.emoji}</span>
+                <span>${mood.label}</span>
+            </div>
+        `;
+    },
+    
+    // Open mood selector
+    openSelector(currentMoodId, onSave) {
+        const modal = document.createElement('div');
+        modal.className = 'mood-selector-modal';
+        modal.id = 'moodSelectorModal';
+        
+        modal.innerHTML = `
+            <div class="mood-selector-title">😊 Come ti senti oggi?</div>
+            <div class="mood-selector-subtitle">Fai sapere cosa stai cercando</div>
+            
+            <div class="mood-options">
+                ${this.moods.map(m => `
+                    <div class="mood-option ${m.id === currentMoodId ? 'selected' : ''}" 
+                         data-mood="${m.id}"
+                         style="color: ${m.color}; background: ${m.color}15;"
+                         onclick="MoodStatus.selectMood('${m.id}')">
+                        <div class="mood-emoji">${m.emoji}</div>
+                        <div class="mood-label">${m.label}</div>
+                        <div class="mood-description">${m.description}</div>
+                    </div>
+                `).join('')}
+            </div>
+            
+            <button class="mood-save-btn" onclick="MoodStatus.saveMood()">
+                Salva Mood
+            </button>
+            
+            <button class="mood-skip-btn" onclick="MoodStatus.clearMood()">
+                Rimuovi mood
+            </button>
+        `;
+        
+        this._onSave = onSave;
+        this._selectedMood = currentMoodId;
+        document.body.appendChild(modal);
+    },
+    
+    selectMood(moodId) {
+        document.querySelectorAll('.mood-option').forEach(opt => {
+            opt.classList.toggle('selected', opt.dataset.mood === moodId);
+        });
+        this._selectedMood = moodId;
+    },
+    
+    async saveMood() {
+        const moodId = this._selectedMood;
+        
+        // Save to Firebase
+        if (window.db && window.currentUser) {
+            try {
+                await window.db.collection('users').doc(window.currentUser.id).update({
+                    currentMood: moodId,
+                    moodUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                window.currentUser.currentMood = moodId;
+                console.log('✅ Mood saved:', moodId);
+            } catch (e) {
+                console.log('Save mood error:', e);
+            }
+        }
+        
+        document.getElementById('moodSelectorModal')?.remove();
+        
+        if (this._onSave) {
+            this._onSave(moodId);
+        }
+        
+        // Update UI
+        this.updateHeaderMood();
+    },
+    
+    async clearMood() {
+        if (window.db && window.currentUser) {
+            try {
+                await window.db.collection('users').doc(window.currentUser.id).update({
+                    currentMood: null
+                });
+                window.currentUser.currentMood = null;
+            } catch (e) {
+                console.log('Clear mood error:', e);
+            }
+        }
+        
+        document.getElementById('moodSelectorModal')?.remove();
+        this.updateHeaderMood();
+        
+        if (this._onSave) {
+            this._onSave(null);
+        }
+    },
+    
+    // Add mood button to header
+    addHeaderButton() {
+        const headerRight = document.querySelector('.header-right, .nav-right, header > div:last-child');
+        if (!headerRight || document.getElementById('headerMoodBtn')) return;
+        
+        const btn = document.createElement('button');
+        btn.id = 'headerMoodBtn';
+        btn.className = 'header-mood-btn';
+        btn.onclick = () => this.openSelector(window.currentUser?.currentMood, () => {});
+        
+        const currentMood = window.currentUser?.currentMood;
+        const mood = this.getMood(currentMood);
+        
+        if (mood) {
+            btn.innerHTML = `<span>${mood.emoji}</span>`;
+            btn.style.background = mood.color + '33';
+            btn.style.color = mood.color;
+        } else {
+            btn.innerHTML = `<span style="font-size:18px;">😊</span>`;
+            btn.style.color = '#888';
+        }
+        
+        headerRight.insertBefore(btn, headerRight.firstChild);
+    },
+    
+    updateHeaderMood() {
+        const btn = document.getElementById('headerMoodBtn');
+        if (!btn) return;
+        
+        const currentMood = window.currentUser?.currentMood;
+        const mood = this.getMood(currentMood);
+        
+        if (mood) {
+            btn.innerHTML = `<span>${mood.emoji}</span>`;
+            btn.style.background = mood.color + '33';
+            btn.style.color = mood.color;
+        } else {
+            btn.innerHTML = `<span style="font-size:18px;">😊</span>`;
+            btn.style.background = 'rgba(255,255,255,0.1)';
+            btn.style.color = '#888';
+        }
+    }
+};
+
+// Initialize
+MoodStatus.init();
+window.MoodStatus = MoodStatus;
+
+
+// =============================================
+// INTEGRATION - Connect new features to existing code
+// =============================================
+
+// Initialize all new systems on app load
+(function initializeNewFeatures() {
+    // Wait for app to be ready
+    const checkReady = setInterval(() => {
+        if (window.currentUser || document.querySelector('.main-container')) {
+            clearInterval(checkReady);
+            
+            // Add mood button to header after login
+            setTimeout(() => {
+                if (window.currentUser) {
+                    MoodStatus.addHeaderButton();
+                }
+            }, 1000);
+            
+            console.log('✅ All new features initialized');
+        }
+    }, 500);
+})();
+
+// Enhanced appendMessage with Read Receipts
+const originalAppendMessage = window.appendMessage;
+if (typeof originalAppendMessage === 'function') {
+    window.appendMessage = function(msg, messagesDiv) {
+        // Call original first
+        originalAppendMessage(msg, messagesDiv);
+        
+        // Add read receipt status to last message
+        const lastMsg = messagesDiv?.lastElementChild;
+        if (lastMsg && msg.senderId === window.currentUser?.id) {
+            const status = msg.status || 'sent';
+            const statusHtml = ReadReceiptsSystem.getAnimatedStatusIcon(status, true);
+            
+            const timeSpan = lastMsg.querySelector('.message-time');
+            if (timeSpan && !timeSpan.querySelector('.msg-status')) {
+                timeSpan.insertAdjacentHTML('beforeend', statusHtml);
+            }
+        }
+    };
+}
+
+// Mark messages as read when opening chat
+const originalOpenChat = window.openChat;
+if (typeof originalOpenChat === 'function') {
+    window.openChat = async function(matchId, matchName, matchPhoto) {
+        // Call original
+        await originalOpenChat(matchId, matchName, matchPhoto);
+        
+        // Mark messages as read
+        const chatId = window.currentChatId || 
+            [window.currentUser?.id, matchId].sort().join('_');
+        ReadReceiptsSystem.markMessagesAsRead(chatId, window.currentUser?.id);
+    };
+}
+
+// Add prompts to profile view
+const originalShowProfile = window.showProfile;
+if (typeof originalShowProfile === 'function') {
+    window.showProfile = async function() {
+        await originalShowProfile();
+        
+        // Add prompts section button
+        setTimeout(() => {
+            const profileContent = document.querySelector('.profile-content, #profileContainer');
+            if (profileContent && !document.getElementById('addPromptsBtn')) {
+                const promptsSection = document.createElement('div');
+                promptsSection.style.cssText = 'padding: 15px; margin-top: 15px;';
+                promptsSection.innerHTML = `
+                    <h3 style="color:#fff; margin-bottom:15px; display:flex; align-items:center; gap:10px;">
+                        🎭 I Miei Prompt
+                        <button id="addPromptsBtn" onclick="ProfilePrompts.openSelector()" style="
+                            background: linear-gradient(135deg, #dc2626, #f97316);
+                            border: none;
+                            border-radius: 20px;
+                            padding: 6px 15px;
+                            color: #fff;
+                            font-size: 12px;
+                            cursor: pointer;
+                        ">+ Aggiungi</button>
+                    </h3>
+                    <div id="userPromptsContainer">
+                        ${ProfilePrompts.renderPrompts(window.currentUser?.prompts || [])}
+                    </div>
+                `;
+                
+                // Insert after photos or bio
+                const insertPoint = profileContent.querySelector('.profile-photos, .profile-bio');
+                if (insertPoint) {
+                    insertPoint.after(promptsSection);
+                } else {
+                    profileContent.appendChild(promptsSection);
+                }
+            }
+        }, 500);
+    };
+}
+
+// Show skeleton loading when loading profiles
+const originalLoadProfiles = window.loadProfiles;
+if (typeof originalLoadProfiles === 'function') {
+    window.loadProfiles = async function() {
+        const container = document.querySelector('.swipe-container, #profilesContainer');
+        if (container) {
+            SkeletonLoader.show(container, 'profile');
+        }
+        await originalLoadProfiles();
+    };
+}
+
+// Show mood on discovery cards (hook into card creation)
+const addMoodToCard = (card, user) => {
+    if (user?.currentMood && card && !card.querySelector('.card-mood-indicator')) {
+        const moodHtml = MoodStatus.renderCardIndicator(user.currentMood);
+        card.insertAdjacentHTML('afterbegin', moodHtml);
+    }
+};
+
+// Export for use
+window.addMoodToCard = addMoodToCard;
+
+console.log('✅ Feature integrations complete');
+
