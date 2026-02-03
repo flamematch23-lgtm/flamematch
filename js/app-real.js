@@ -183,7 +183,7 @@ function checkAuth() {
                 let retries = 0;
                 const maxRetries = 5;
                 while (retries < maxRetries) {
-                    currentUserProfile = await FlameUsers.getProfile(user.uid);
+                    console.log("🔄 Chiamata FlameUsers.getProfile..."); currentUserProfile = await FlameUsers.getProfile(user.uid); console.log("📄 Risposta getProfile:", currentUserProfile ? "TROVATO" : "NULL");
                     if (currentUserProfile) {
                         console.log('✅ Profilo caricato al tentativo', retries + 1);
                         break;
@@ -219,7 +219,7 @@ function checkAuth() {
                         notifications: true
                     }
                 });
-                currentUserProfile = await FlameUsers.getProfile(user.uid);
+                console.log("🔄 Chiamata FlameUsers.getProfile..."); currentUserProfile = await FlameUsers.getProfile(user.uid); console.log("📄 Risposta getProfile:", currentUserProfile ? "TROVATO" : "NULL");
                 
                 // 📧 Invia email di benvenuto al nuovo utente
                 if (window.FlameEmail && user.email) {

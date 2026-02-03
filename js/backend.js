@@ -244,14 +244,32 @@ const FlameUsers = {
     
     // Ottieni profilo utente
     async getProfile(uid) {
+        console.log('📖 getProfile chiamato per UID:', uid);
+        
+        // Check if db is initialized
+        if (!db) {
+            console.error('❌ Firestore db non inizializzato!');
+            return null;
+        }
+        console.log('✅ Firestore db OK');
         try {
-            const doc = await db.collection('users').doc(uid).get();
+            // Add timeout to Firestore query
+            const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Timeout Firestore (10s)')), 10000)
+            );
+            
+            const queryPromise = db.collection('users').doc(uid).get();
+            
+            const doc = await Promise.race([queryPromise, timeoutPromise]);
+            
             if (doc.exists) {
+                console.log('✅ Profilo trovato per:', uid);
                 return { id: doc.id, ...doc.data() };
             }
+            console.log('⚠️ Profilo non esiste per:', uid);
             return null;
         } catch (error) {
-            console.error('Errore lettura profilo:', error);
+            console.error('❌ Errore lettura profilo:', error);
             return null;
         }
     },
