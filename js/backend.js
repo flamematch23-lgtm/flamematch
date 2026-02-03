@@ -258,37 +258,55 @@ const FlameUsers = {
         }
         console.log('✅ Firestore db OK');
         
-        return new Promise(async (resolve) => {
-            // Hard timeout - will resolve with null after 5 seconds
-            const timeout = setTimeout(() => {
-                console.error('⏰ TIMEOUT 5s! Risolvo con null');
-                resolve(null);
-            }, 5000);
-            
-            try {
-                console.log('🔄 Avvio query Firestore...');
-                const docRef = window.db.collection('users').doc(uid);
-                
-                // Simple get without options
-                const doc = await docRef.get();
-                
-                clearTimeout(timeout);
-                console.log('📥 Query completata! exists:', doc.exists);
-                
-                if (doc.exists) {
-                    const data = { id: doc.id, ...doc.data() };
-                    console.log('✅ Profilo trovato:', data.name);
-                    resolve(data);
-                } else {
-                    console.log('⚠️ Profilo non esiste');
+        console.log('🔄 Avvio query Firestore...');
+        
+        let resolved = false;
+        
+        // Create timeout promise
+        const timeoutPromise = new Promise((resolve) => {
+            setTimeout(() => {
+                if (!resolved) {
+                    console.error('⏰ TIMEOUT 5s! Firestore non risponde');
+                    resolved = true;
                     resolve(null);
                 }
-            } catch (error) {
-                clearTimeout(timeout);
-                console.error('❌ Errore Firestore:', error.code, error.message);
+            }, 5000);
+        });
+        
+        // Create query promise  
+        const queryPromise = new Promise((resolve) => {
+            try {
+                const docRef = window.db.collection('users').doc(uid);
+                console.log('📄 DocRef creato, chiamo get()...');
+                
+                docRef.get()
+                    .then((doc) => {
+                        if (!resolved) {
+                            resolved = true;
+                            console.log('📥 Query OK! exists:', doc.exists);
+                            if (doc.exists) {
+                                resolve({ id: doc.id, ...doc.data() });
+                            } else {
+                                resolve(null);
+                            }
+                        }
+                    })
+                    .catch((error) => {
+                        if (!resolved) {
+                            resolved = true;
+                            console.error('❌ Query error:', error.code, error.message);
+                            resolve(null);
+                        }
+                    });
+            } catch (e) {
+                console.error('❌ Exception:', e);
+                resolved = true;
                 resolve(null);
             }
         });
+        
+        // Race between timeout and query
+        return Promise.race([queryPromise, timeoutPromise]);
     },
     
     // Aggiorna profilo
