@@ -252,58 +252,43 @@ const FlameUsers = {
     async getProfile(uid) {
         console.log('📖 getProfile chiamato per UID:', uid);
         
-        // Check if db is initialized
         if (!window.db) {
             console.error('❌ Firestore db non inizializzato!');
             return null;
         }
         console.log('✅ Firestore db OK');
         
-        try {
-            console.log('🔄 Creazione riferimento documento...');
-            const docRef = window.db.collection('users').doc(uid);
-            console.log('✅ Riferimento creato:', docRef.path);
+        return new Promise(async (resolve) => {
+            // Hard timeout - will resolve with null after 5 seconds
+            const timeout = setTimeout(() => {
+                console.error('⏰ TIMEOUT 5s! Risolvo con null');
+                resolve(null);
+            }, 5000);
             
-            // Shorter timeout - 5 seconds
-            let timeoutId;
-            const timeoutPromise = new Promise((_, reject) => {
-                timeoutId = setTimeout(() => {
-                    console.error('⏰ TIMEOUT 5s! Firestore non risponde - possibile problema Security Rules');
-                    reject(new Error('Timeout Firestore'));
-                }, 5000);
-            });
-            
-            console.log('🔄 Esecuzione query get()...');
-            
-            // Add .catch to query itself
-            const queryPromise = docRef.get({ source: 'server' }).then(doc => {
-                clearTimeout(timeoutId);
-                console.log('📥 Query completata!');
-                return doc;
-            }).catch(err => {
-                clearTimeout(timeoutId);
-                console.error('❌ Errore nella query:', err.code, err.message);
-                throw err;
-            });
-            
-            console.log('⏳ In attesa risposta...');
-            const doc = await Promise.race([queryPromise, timeoutPromise]);
-            
-            console.log('📥 Risposta ricevuta, exists:', doc.exists);
-            
-            if (doc.exists) {
-                const data = doc.data();
-                console.log('✅ Profilo trovato per:', uid, '- Nome:', data.name || 'N/A');
-                return { id: doc.id, ...data };
+            try {
+                console.log('🔄 Avvio query Firestore...');
+                const docRef = window.db.collection('users').doc(uid);
+                
+                // Simple get without options
+                const doc = await docRef.get();
+                
+                clearTimeout(timeout);
+                console.log('📥 Query completata! exists:', doc.exists);
+                
+                if (doc.exists) {
+                    const data = { id: doc.id, ...doc.data() };
+                    console.log('✅ Profilo trovato:', data.name);
+                    resolve(data);
+                } else {
+                    console.log('⚠️ Profilo non esiste');
+                    resolve(null);
+                }
+            } catch (error) {
+                clearTimeout(timeout);
+                console.error('❌ Errore Firestore:', error.code, error.message);
+                resolve(null);
             }
-            console.log('⚠️ Profilo non esiste per UID:', uid);
-            console.log('📝 Creerò un profilo di default...');
-            return null;
-        } catch (error) {
-            console.error('❌ Errore lettura profilo:', error.message);
-            // If timeout or permission error, return null so we can create profile
-            return null;
-        }
+        });
     },
     
     // Aggiorna profilo
