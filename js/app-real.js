@@ -168,6 +168,37 @@ function checkAuth() {
     console.log('🔐 checkAuth() chiamato - in attesa di auth state...');
     
     auth.onAuthStateChanged(async (user) => {
+        // 🚨 GLOBAL BYPASS: Force continue after 8 seconds no matter what
+        const bypassTimeout = setTimeout(() => {
+            console.warn('🚨 BYPASS ATTIVATO! Forzo caricamento dopo 8s');
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            if (loadingOverlay && loadingOverlay.style.display !== 'none') {
+                loadingOverlay.style.display = 'none';
+                // Create minimal profile
+                if (window.firebase && firebase.auth().currentUser) {
+                    const u = firebase.auth().currentUser;
+                    window.currentUserProfile = {
+                        id: u.uid,
+                        email: u.email,
+                        name: u.displayName || 'Utente',
+                        photos: u.photoURL ? [u.photoURL] : [],
+                        age: 25,
+                        bio: '',
+                        city: '',
+                        isVerified: false,
+                        isPremium: false
+                    };
+                    console.log('✅ Profilo bypass creato:', window.currentUserProfile.name);
+                }
+            }
+        }, 8000);
+        
+        // Clear bypass if we succeed normally
+        const clearBypass = () => {
+            clearTimeout(bypassTimeout);
+            console.log('✅ Bypass cancellato - caricamento normale OK');
+        };
+
         console.log('🔄 Auth state changed:', user ? user.email : 'NO USER');
         
         if (user) {
@@ -187,7 +218,7 @@ function checkAuth() {
                         currentUserProfile = await FlameUsers.getProfile(user.uid);
                         console.log("📄 Risposta:", currentUserProfile ? "PROFILO TROVATO ✅" : "NULL");
                         if (currentUserProfile) {
-                            console.log('✅ Profilo caricato!');
+                            console.log('✅ Profilo caricato!'); clearBypass();
                             break;
                         }
                     } catch (e) {
@@ -263,7 +294,7 @@ function checkAuth() {
             // Aggiorna ogni 5 minuti
             setInterval(updateLastActive, 5 * 60 * 1000);
             
-            console.log('🎉 Caricamento completato con successo!');
+            console.log('🎉 Caricamento completato con successo!'); if (typeof clearBypass === 'function') clearBypass();
             
             // Cancella safety timeout
             if (window.safetyTimeoutId) {
