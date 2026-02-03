@@ -320,7 +320,7 @@ async function updateLastActive() {
     if (!user) return;
     
     try {
-        await firebase.firestore().collection('users').doc(user.uid).update({
+        await window.window.db.collection('users').doc(user.uid).update({
             lastActive: firebase.firestore.FieldValue.serverTimestamp()
         });
     } catch (e) {
@@ -337,7 +337,7 @@ async function loadPremiumData() {
     if (!currentUser) return;
     
     try {
-        const doc = await db.collection('subscriptions').doc(currentUser.uid).get();
+        const doc = await window.db.collection('subscriptions').doc(currentUser.uid).get();
         
         if (doc.exists) {
             const data = doc.data();
@@ -378,7 +378,7 @@ async function savePremiumData() {
     if (!currentUser) return;
     
     try {
-        await db.collection('subscriptions').doc(currentUser.uid).set({
+        await window.db.collection('subscriptions').doc(currentUser.uid).set({
             plan: userPremiumData.plan,
             expiresAt: userPremiumData.expiresAt,
             dailySwipesUsed: userPremiumData.dailySwipesUsed,
@@ -976,7 +976,7 @@ async function subscribeToPlan(plan) {
         await savePremiumData();
         
         // Aggiorna anche il profilo utente
-        await db.collection('users').doc(currentUser.uid).update({
+        await window.db.collection('users').doc(currentUser.uid).update({
             isPremium: true,
             premiumPlan: plan,
             premiumExpiresAt: expiresAt
@@ -1138,7 +1138,7 @@ async function saveSubscriptionToFirebase(planName, subscriptionId) {
     const expiresAt = new Date();
     expiresAt.setMonth(expiresAt.getMonth() + 1); // 1 mese
     
-    await db.collection('subscriptions').doc(currentUser.uid).set({
+    await window.db.collection('subscriptions').doc(currentUser.uid).set({
         plan: planName,
         paypalSubscriptionId: subscriptionId,
         expiresAt: firebase.firestore.Timestamp.fromDate(expiresAt),
@@ -1263,7 +1263,7 @@ async function showReceivedLikes() {
     
     // Carica likes reali
     try {
-        const likesSnapshot = await db.collection('swipes')
+        const likesSnapshot = await window.db.collection('swipes')
             .where('to', '==', currentUser.uid)
             .where('type', '==', 'like')
             .orderBy('timestamp', 'desc')
@@ -1275,10 +1275,10 @@ async function showReceivedLikes() {
             const likeData = doc.data();
             // Verifica che non sia già un match
             const matchId = [currentUser.uid, likeData.from].sort().join('_');
-            const matchDoc = await db.collection('matches').doc(matchId).get();
+            const matchDoc = await window.db.collection('matches').doc(matchId).get();
             
             if (!matchDoc.exists) {
-                const userDoc = await db.collection('users').doc(likeData.from).get();
+                const userDoc = await window.db.collection('users').doc(likeData.from).get();
                 if (userDoc.exists) {
                     likes.push({
                         ...userDoc.data(),
@@ -1390,7 +1390,7 @@ async function likeBackUser(userId) {
         if (result.match) {
             closeLikesModal();
             // Carica dati utente per mostrare match
-            const userDoc = await db.collection('users').doc(userId).get();
+            const userDoc = await window.db.collection('users').doc(userId).get();
             if (userDoc.exists) {
                 showMatch(userDoc.data());
             }
@@ -1518,7 +1518,7 @@ function closePassportModal() {
 
 async function setPassportLocation(cityName, lat, lng) {
     try {
-        await db.collection('users').doc(currentUser.uid).update({
+        await window.db.collection('users').doc(currentUser.uid).update({
             passportLocation: {
                 city: cityName,
                 latitude: lat,
@@ -1541,7 +1541,7 @@ async function setPassportLocation(cityName, lat, lng) {
 
 async function resetPassportLocation() {
     try {
-        await db.collection('users').doc(currentUser.uid).update({
+        await window.db.collection('users').doc(currentUser.uid).update({
             passportLocation: firebase.firestore.FieldValue.delete()
         });
         
@@ -1565,7 +1565,7 @@ async function showProfileVisitors() {
     }
     
     try {
-        const visitorsSnapshot = await db.collection('profileVisits')
+        const visitorsSnapshot = await window.db.collection('profileVisits')
             .where('visitedUserId', '==', currentUser.uid)
             .orderBy('timestamp', 'desc')
             .limit(30)
@@ -1574,7 +1574,7 @@ async function showProfileVisitors() {
         const visitors = [];
         for (const doc of visitorsSnapshot.docs) {
             const visitData = doc.data();
-            const userDoc = await db.collection('users').doc(visitData.visitorId).get();
+            const userDoc = await window.db.collection('users').doc(visitData.visitorId).get();
             if (userDoc.exists) {
                 visitors.push({
                     ...userDoc.data(),
@@ -1673,7 +1673,7 @@ async function trackProfileVisit(visitedUserId) {
     if (!currentUser || visitedUserId === currentUser.uid) return;
     
     try {
-        await db.collection('profileVisits').add({
+        await window.db.collection('profileVisits').add({
             visitorId: currentUser.uid,
             visitedUserId: visitedUserId,
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
@@ -2715,7 +2715,7 @@ async function applyFilters() {
     const user = FlameAuth.currentUser;
     if (user) {
         try {
-            await firebase.firestore().collection('users').doc(user.uid).update({
+            await window.window.db.collection('users').doc(user.uid).update({
                 searchFilters: currentFilters
             });
         } catch (e) {
@@ -2733,7 +2733,7 @@ async function loadFilteredProfiles() {
     if (!user || !currentUserProfile) return;
     
     try {
-        const swipedSnap = await firebase.firestore()
+        const swipedSnap = await window.db
             .collection('swipes')
             .where('swiperId', '==', user.uid)
             .get();
@@ -2742,13 +2742,13 @@ async function loadFilteredProfiles() {
         swipedIds.add(user.uid);
         
         // Blocca utenti bloccati
-        const blockedSnap = await firebase.firestore()
+        const blockedSnap = await window.db
             .collection('users').doc(user.uid)
             .collection('blockedUsers').get();
         blockedSnap.docs.forEach(d => swipedIds.add(d.id));
         
         // Query base
-        let query = firebase.firestore().collection('users')
+        let query = window.window.db.collection('users')
             .where('gender', '==', currentUserProfile.interestedIn || 'female')
             .where('isPaused', '!=', true);
         
@@ -2805,7 +2805,7 @@ function toggleSafeMode() {
     currentFilters.showVerifiedOnly = !currentFilters.showVerifiedOnly;
     
     // Update in Firebase
-    firebase.firestore().collection('users').doc(user.uid).update({
+    window.window.db.collection('users').doc(user.uid).update({
         safeModeEnabled: currentFilters.showVerifiedOnly
     });
     
@@ -2917,7 +2917,7 @@ async function exploreNearby() {
             userLocation = await requestGeolocation();
             
             // Salva la posizione nel profilo utente su Firebase
-            await firebase.firestore().collection('users').doc(user.uid).update({
+            await window.window.db.collection('users').doc(user.uid).update({
                 location: userLocation,
                 lastLocationUpdate: firebase.firestore.FieldValue.serverTimestamp()
             });
@@ -2946,7 +2946,7 @@ async function exploreNearby() {
     
     try {
         // Ottieni utenti già swipati
-        const swipedSnap = await firebase.firestore()
+        const swipedSnap = await window.db
             .collection('swipes')
             .where('swiperId', '==', user.uid)
             .get();
@@ -2954,7 +2954,7 @@ async function exploreNearby() {
         swipedIds.add(user.uid);
         
         // Carica tutti i profili
-        const snapshot = await firebase.firestore()
+        const snapshot = await window.db
             .collection('users')
             .where('gender', '==', currentUserProfile.interestedIn || 'female')
             .limit(200)
@@ -3033,7 +3033,7 @@ async function exploreNew() {
     if (!user) return;
     
     try {
-        const swipedSnap = await firebase.firestore()
+        const swipedSnap = await window.db
             .collection('swipes')
             .where('swiperId', '==', user.uid)
             .get();
@@ -3044,7 +3044,7 @@ async function exploreNew() {
         const weekAgo = new Date();
         weekAgo.setDate(weekAgo.getDate() - 7);
         
-        const snapshot = await firebase.firestore()
+        const snapshot = await window.db
             .collection('users')
             .where('gender', '==', currentUserProfile?.interestedIn || 'female')
             .where('createdAt', '>=', weekAgo)
@@ -3084,7 +3084,7 @@ async function explorePopular() {
     if (!user) return;
     
     try {
-        const swipedSnap = await firebase.firestore()
+        const swipedSnap = await window.db
             .collection('swipes')
             .where('swiperId', '==', user.uid)
             .get();
@@ -3092,7 +3092,7 @@ async function explorePopular() {
         swipedIds.add(user.uid);
         
         // Prendi utenti con più like ricevuti
-        const snapshot = await firebase.firestore()
+        const snapshot = await window.db
             .collection('users')
             .where('gender', '==', currentUserProfile?.interestedIn || 'female')
             .orderBy('likesReceived', 'desc')
@@ -3138,7 +3138,7 @@ async function exploreOnline() {
     if (!user) return;
     
     try {
-        const swipedSnap = await firebase.firestore()
+        const swipedSnap = await window.db
             .collection('swipes')
             .where('swiperId', '==', user.uid)
             .get();
@@ -3149,7 +3149,7 @@ async function exploreOnline() {
         const fifteenMinsAgo = new Date();
         fifteenMinsAgo.setMinutes(fifteenMinsAgo.getMinutes() - 15);
         
-        const snapshot = await firebase.firestore()
+        const snapshot = await window.db
             .collection('users')
             .where('gender', '==', currentUserProfile?.interestedIn || 'female')
             .where('lastActive', '>=', fifteenMinsAgo)
@@ -3252,7 +3252,7 @@ async function loadFeed() {
     
     try {
         // 1. Get all mutual matches
-        const matchesSnapshot = await firebase.firestore()
+        const matchesSnapshot = await window.db
             .collection('matches')
             .where('users', 'array-contains', user.uid)
             .get();
@@ -3288,7 +3288,7 @@ async function loadFeed() {
         
         for (let i = 0; i < feedMatchIds.length; i += batchSize) {
             const batch = feedMatchIds.slice(i, i + batchSize);
-            const postsSnapshot = await firebase.firestore()
+            const postsSnapshot = await window.db
                 .collection('posts')
                 .where('userId', 'in', batch)
                 .orderBy('createdAt', 'desc')
@@ -3323,7 +3323,7 @@ async function loadFeed() {
         const usersData = {};
         
         for (const uid of userIds) {
-            const userDoc = await firebase.firestore().collection('users').doc(uid).get();
+            const userDoc = await window.window.db.collection('users').doc(uid).get();
             if (userDoc.exists) {
                 usersData[uid] = userDoc.data();
             }
@@ -3406,7 +3406,7 @@ async function checkFeedLikedPosts() {
     
     for (const post of feedPosts) {
         try {
-            const likeDoc = await firebase.firestore()
+            const likeDoc = await window.db
                 .collection('posts').doc(post.id)
                 .collection('likes').doc(user.uid).get();
             
@@ -3431,10 +3431,10 @@ async function toggleFeedPostLike(postId) {
     if (!btn || !countEl) return;
     
     const isLiked = btn.dataset.liked === 'true';
-    const likeRef = firebase.firestore()
+    const likeRef = window.db
         .collection('posts').doc(postId)
         .collection('likes').doc(user.uid);
-    const postRef = firebase.firestore().collection('posts').doc(postId);
+    const postRef = window.window.db.collection('posts').doc(postId);
     
     try {
         if (isLiked) {
@@ -4005,7 +4005,7 @@ async function handlePhotoUpload(event) {
         const cleanPhotos = photos.filter(p => p);
         
         // Salva su Firebase
-        await firebase.firestore().collection('users').doc(user.uid).update({
+        await window.window.db.collection('users').doc(user.uid).update({
             photos: cleanPhotos
         });
         
@@ -4039,7 +4039,7 @@ async function deletePhoto(index) {
     try {
         photos.splice(index, 1);
         
-        await firebase.firestore().collection('users').doc(user.uid).update({
+        await window.window.db.collection('users').doc(user.uid).update({
             photos: photos
         });
         
@@ -4216,7 +4216,7 @@ async function saveProfileChanges() {
     }
     
     try {
-        await firebase.firestore().collection('users').doc(user.uid).update({
+        await window.window.db.collection('users').doc(user.uid).update({
             name,
             birthday,
             bio,
@@ -4573,7 +4573,7 @@ async function compareWithProfilePhotos(selfieData) {
         const user = firebase.auth().currentUser;
         if (!user) return { isMatch: false, similarity: 0 };
         
-        const userDoc = await db.collection('users').doc(user.uid).get();
+        const userDoc = await window.db.collection('users').doc(user.uid).get();
         const userData = userDoc.data();
         
         if (!userData?.photos || userData.photos.length === 0) {
@@ -4721,7 +4721,7 @@ async function saveVerificationToFirestore(photoUrl, similarityScore) {
     
     try {
         // Crea record di verifica con dati AI
-        await db.collection('verifications').add({
+        await window.db.collection('verifications').add({
             uid: user.uid,
             pose: selectedPose.id,
             photoUrl: photoUrl,
@@ -4734,7 +4734,7 @@ async function saveVerificationToFirestore(photoUrl, similarityScore) {
         });
         
         // Aggiorna profilo utente con badge verificato
-        await db.collection('users').doc(user.uid).update({
+        await window.db.collection('users').doc(user.uid).update({
             isVerified: true,
             verifiedAt: firebase.firestore.FieldValue.serverTimestamp(),
             verificationScore: similarityScore
@@ -4788,7 +4788,7 @@ async function loadPrivacySettings() {
     if (!user) return;
     
     try {
-        const doc = await firebase.firestore().collection('users').doc(user.uid).get();
+        const doc = await window.window.db.collection('users').doc(user.uid).get();
         if (doc.exists && doc.data().privacySettings) {
             userPrivacySettings = { ...userPrivacySettings, ...doc.data().privacySettings };
         }
@@ -4802,7 +4802,7 @@ async function savePrivacySettings() {
     if (!user) return;
     
     try {
-        await firebase.firestore().collection('users').doc(user.uid).update({
+        await window.window.db.collection('users').doc(user.uid).update({
             privacySettings: userPrivacySettings
         });
         showToast('✅ Impostazioni salvate!');
@@ -4934,7 +4934,7 @@ async function togglePauseProfile() {
     const user = FlameAuth.currentUser;
     if (user) {
         try {
-            await firebase.firestore().collection('users').doc(user.uid).update({
+            await window.window.db.collection('users').doc(user.uid).update({
                 privacySettings: userPrivacySettings,
                 isActive: !userPrivacySettings.profilePaused,
                 pausedAt: userPrivacySettings.profilePaused ? firebase.firestore.FieldValue.serverTimestamp() : null
@@ -4975,12 +4975,12 @@ async function blockUser(userId, userName, userPhoto) {
     
     try {
         // Salva in Firestore
-        await firebase.firestore().collection('users').doc(user.uid).update({
+        await window.window.db.collection('users').doc(user.uid).update({
             privacySettings: userPrivacySettings
         });
         
         // Aggiungi anche alla collection blocchi per query veloci
-        await firebase.firestore().collection('blocks').add({
+        await window.window.db.collection('blocks').add({
             blockerId: user.uid,
             blockedId: userId,
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -5004,12 +5004,12 @@ async function unblockUser(userId) {
     userPrivacySettings.blockedUsers = userPrivacySettings.blockedUsers.filter(u => u.id !== userId);
     
     try {
-        await firebase.firestore().collection('users').doc(user.uid).update({
+        await window.window.db.collection('users').doc(user.uid).update({
             privacySettings: userPrivacySettings
         });
         
         // Rimuovi dalla collection blocchi
-        const blocksQuery = await firebase.firestore().collection('blocks')
+        const blocksQuery = await window.window.db.collection('blocks')
             .where('blockerId', '==', user.uid)
             .where('blockedId', '==', userId)
             .get();
@@ -5135,7 +5135,7 @@ async function submitReport(userId, userName) {
     
     try {
         // Salva segnalazione in Firestore
-        await firebase.firestore().collection('reports').add({
+        await window.window.db.collection('reports').add({
             reporterId: user.uid,
             reporterEmail: user.email,
             reportedUserId: userId,
@@ -5245,41 +5245,41 @@ async function executeDeleteAccount() {
     btn.disabled = true;
     
     try {
-        const db = firebase.firestore();
-        const batch = db.batch();
+        const db = window.db;
+        const batch = window.db.batch();
         
         // 1. Elimina profilo utente
-        batch.delete(db.collection('users').doc(user.uid));
+        batch.delete(window.db.collection('users').doc(user.uid));
         
         // 2. Elimina tutti i match dove l'utente è coinvolto
-        const matchesQuery = await db.collection('matches')
+        const matchesQuery = await window.db.collection('matches')
             .where('users', 'array-contains', user.uid)
             .get();
         
         matchesQuery.forEach(doc => batch.delete(doc.ref));
         
         // 3. Elimina tutti i messaggi inviati
-        const messagesQuery = await db.collection('messages')
+        const messagesQuery = await window.db.collection('messages')
             .where('senderId', '==', user.uid)
             .get();
         
         messagesQuery.forEach(doc => batch.delete(doc.ref));
         
         // 4. Elimina tutti gli swipes
-        const swipesFromQuery = await db.collection('swipes')
+        const swipesFromQuery = await window.db.collection('swipes')
             .where('from', '==', user.uid)
             .get();
         
         swipesFromQuery.forEach(doc => batch.delete(doc.ref));
         
-        const swipesToQuery = await db.collection('swipes')
+        const swipesToQuery = await window.db.collection('swipes')
             .where('to', '==', user.uid)
             .get();
         
         swipesToQuery.forEach(doc => batch.delete(doc.ref));
         
         // 5. Elimina verifiche
-        const verifQuery = await db.collection('verifications')
+        const verifQuery = await window.db.collection('verifications')
             .where('uid', '==', user.uid)
             .get();
         
@@ -5341,7 +5341,7 @@ async function loadNotificationSettings() {
     if (!user) return;
     
     try {
-        const doc = await firebase.firestore().collection('users').doc(user.uid).get();
+        const doc = await window.window.db.collection('users').doc(user.uid).get();
         if (doc.exists && doc.data().notificationSettings) {
             notificationSettings = { ...notificationSettings, ...doc.data().notificationSettings };
         }
@@ -5442,7 +5442,7 @@ async function toggleNotification(setting) {
     const user = FlameAuth.currentUser;
     if (user) {
         try {
-            await firebase.firestore().collection('users').doc(user.uid).update({
+            await window.window.db.collection('users').doc(user.uid).update({
                 notificationSettings: notificationSettings
             });
             showToast('✅ Impostazioni salvate');
@@ -5470,7 +5470,7 @@ async function checkBoostStatus() {
     if (!user) return;
     
     try {
-        const doc = await firebase.firestore().collection('users').doc(user.uid).get();
+        const doc = await window.window.db.collection('users').doc(user.uid).get();
         if (doc.exists && doc.data().boostEndTime) {
             const endTime = doc.data().boostEndTime.toDate();
             if (endTime > new Date()) {
@@ -5559,7 +5559,7 @@ async function activateFreeBoost() {
     
     try {
         // Verifica se ha già usato il boost gratuito
-        const doc = await firebase.firestore().collection('users').doc(user.uid).get();
+        const doc = await window.window.db.collection('users').doc(user.uid).get();
         if (doc.exists && doc.data().usedFreeBoost) {
             showToast('⚠️ Hai già usato il boost gratuito', 'error');
             return;
@@ -5567,7 +5567,7 @@ async function activateFreeBoost() {
         
         const endTime = new Date(Date.now() + 30 * 60 * 1000); // 30 minuti
         
-        await firebase.firestore().collection('users').doc(user.uid).update({
+        await window.window.db.collection('users').doc(user.uid).update({
             boostEndTime: endTime,
             boostStartTime: firebase.firestore.FieldValue.serverTimestamp(),
             usedFreeBoost: true,
@@ -5633,7 +5633,7 @@ function startBoostTimer() {
             // Aggiorna Firestore
             const user = FlameAuth.currentUser;
             if (user) {
-                firebase.firestore().collection('users').doc(user.uid).update({
+                window.window.db.collection('users').doc(user.uid).update({
                     isBoosted: false
                 });
             }
@@ -5729,7 +5729,7 @@ async function openUserProfile(userId) {
     
     try {
         // Carica dati utente
-        const userDoc = await firebase.firestore().collection('users').doc(userId).get();
+        const userDoc = await window.window.db.collection('users').doc(userId).get();
         if (!userDoc.exists) {
             showToast('❌ Profilo non trovato', 'error');
             return;
@@ -5939,21 +5939,21 @@ async function likeUserFromProfile(userId) {
     
     try {
         // Registra il like
-        await firebase.firestore().collection('likes').add({
+        await window.window.db.collection('likes').add({
             fromUserId: currentUser.uid,
             toUserId: userId,
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
         
         // Incrementa likes ricevuti
-        await firebase.firestore().collection('users').doc(userId).update({
+        await window.window.db.collection('users').doc(userId).update({
             likesReceived: firebase.firestore.FieldValue.increment(1)
         });
         
         showToast('❤️ Like inviato!', 'success');
         
         // Controlla se c'è match
-        const reverseCheck = await firebase.firestore().collection('likes')
+        const reverseCheck = await window.window.db.collection('likes')
             .where('fromUserId', '==', userId)
             .where('toUserId', '==', currentUser.uid)
             .get();
@@ -5974,7 +5974,7 @@ async function loadUserPosts(userId) {
     if (!grid) return;
     
     try {
-        const postsSnapshot = await firebase.firestore()
+        const postsSnapshot = await window.db
             .collection('posts')
             .where('userId', '==', userId)
             .orderBy('createdAt', 'desc')
@@ -6214,7 +6214,7 @@ async function publishPost() {
         // Crea documento post
         const caption = document.getElementById('postCaption').value.trim();
         
-        await firebase.firestore().collection('posts').add({
+        await window.window.db.collection('posts').add({
             userId: user.uid,
             mediaUrl: uploadData.secure_url,
             type: isVideo ? 'video' : 'image',
@@ -6254,7 +6254,7 @@ async function openPostDetail(postId, postData) {
     }
     
     // Carica dati autore
-    const authorDoc = await firebase.firestore().collection('users').doc(postData.userId).get();
+    const authorDoc = await window.window.db.collection('users').doc(postData.userId).get();
     const author = authorDoc.exists ? authorDoc.data() : { name: 'Utente' };
     
     const currentUser = FlameAuth.currentUser;
@@ -6263,7 +6263,7 @@ async function openPostDetail(postId, postData) {
     // Controlla se ha già messo like
     let hasLiked = false;
     if (currentUser) {
-        const likeDoc = await firebase.firestore()
+        const likeDoc = await window.db
             .collection('posts').doc(postId)
             .collection('likes').doc(currentUser.uid)
             .get();
@@ -6386,7 +6386,7 @@ async function loadPostComments(postId) {
     if (!container) return;
     
     try {
-        const commentsSnapshot = await firebase.firestore()
+        const commentsSnapshot = await window.db
             .collection('posts').doc(postId)
             .collection('comments')
             .orderBy('createdAt', 'asc')
@@ -6415,7 +6415,7 @@ async function loadPostComments(postId) {
             let authorVerified = false;
             
             try {
-                const authorDoc = await firebase.firestore().collection('users').doc(comment.userId).get();
+                const authorDoc = await window.window.db.collection('users').doc(comment.userId).get();
                 if (authorDoc.exists) {
                     const authorData = authorDoc.data();
                     authorName = authorData.name || 'Utente';
@@ -6477,7 +6477,7 @@ async function submitComment(postId) {
     
     try {
         // Aggiungi commento
-        await firebase.firestore()
+        await window.db
             .collection('posts').doc(postId)
             .collection('comments')
             .add({
@@ -6487,7 +6487,7 @@ async function submitComment(postId) {
             });
         
         // Incrementa contatore
-        await firebase.firestore().collection('posts').doc(postId).update({
+        await window.window.db.collection('posts').doc(postId).update({
             commentsCount: firebase.firestore.FieldValue.increment(1)
         });
         
@@ -6508,11 +6508,11 @@ async function toggleLikePost(postId) {
         return;
     }
     
-    const likeRef = firebase.firestore()
+    const likeRef = window.db
         .collection('posts').doc(postId)
         .collection('likes').doc(user.uid);
     
-    const postRef = firebase.firestore().collection('posts').doc(postId);
+    const postRef = window.window.db.collection('posts').doc(postId);
     
     try {
         const likeDoc = await likeRef.get();
@@ -6571,29 +6571,29 @@ async function deletePost(postId) {
     
     try {
         // Verifica proprietario
-        const postDoc = await firebase.firestore().collection('posts').doc(postId).get();
+        const postDoc = await window.window.db.collection('posts').doc(postId).get();
         if (!postDoc.exists || postDoc.data().userId !== user.uid) {
             showToast('❌ Non puoi eliminare questo post', 'error');
             return;
         }
         
         // Elimina commenti
-        const comments = await firebase.firestore()
+        const comments = await window.db
             .collection('posts').doc(postId)
             .collection('comments').get();
         
-        const batch = firebase.firestore().batch();
+        const batch = window.window.db.batch();
         comments.forEach(doc => batch.delete(doc.ref));
         
         // Elimina likes
-        const likes = await firebase.firestore()
+        const likes = await window.db
             .collection('posts').doc(postId)
             .collection('likes').get();
         
         likes.forEach(doc => batch.delete(doc.ref));
         
         // Elimina post
-        batch.delete(firebase.firestore().collection('posts').doc(postId));
+        batch.delete(window.window.db.collection('posts').doc(postId));
         
         await batch.commit();
         
@@ -6617,12 +6617,12 @@ async function deleteComment(postId, commentId) {
     if (!user) return;
     
     try {
-        await firebase.firestore()
+        await window.db
             .collection('posts').doc(postId)
             .collection('comments').doc(commentId)
             .delete();
         
-        await firebase.firestore().collection('posts').doc(postId).update({
+        await window.window.db.collection('posts').doc(postId).update({
             commentsCount: firebase.firestore.FieldValue.increment(-1)
         });
         
@@ -6642,7 +6642,7 @@ async function startChatWithUser(userId) {
     }
     
     // Cerca match esistente
-    const matchSnapshot = await firebase.firestore()
+    const matchSnapshot = await window.db
         .collection('matches')
         .where('users', 'array-contains', user.uid)
         .get();
@@ -6842,7 +6842,7 @@ async function saveVoiceVibeToProfile(audioUrl, duration) {
     const user = auth.currentUser;
     if (!user) return;
     
-    await db.collection('users').doc(user.uid).update({
+    await window.db.collection('users').doc(user.uid).update({
         voiceVibe: {
             url: audioUrl,
             duration: duration,
@@ -6920,7 +6920,7 @@ async function deleteVoiceVibe() {
     if (!user) return;
     
     if (confirm('Eliminare il tuo Voice Vibe?')) {
-        await db.collection('users').doc(user.uid).update({
+        await window.db.collection('users').doc(user.uid).update({
             voiceVibe: firebase.firestore.FieldValue.delete()
         });
         
@@ -7205,7 +7205,7 @@ async function saveGameResults(compatibility) {
     if (!user || !currentIcebreakerMatchId) return;
     
     try {
-        await db.collection('icebreaker_games').add({
+        await window.db.collection('icebreaker_games').add({
             matchId: currentIcebreakerMatchId,
             playerId: user.uid,
             gameType: currentGame,
@@ -7441,7 +7441,7 @@ async function saveLocationToProfile(locationName, lat, lng) {
             updateData.lastLocationUpdate = firebase.firestore.FieldValue.serverTimestamp();
         }
         
-        await db.collection('users').doc(currentUser.uid).update(updateData);
+        await window.db.collection('users').doc(currentUser.uid).update(updateData);
         
         // Aggiorna cache locale
         if (currentUserProfile) {
@@ -7538,7 +7538,7 @@ const NotificationManager = {
             
             // Save token to user profile
             if (currentUser && this.token) {
-                await db.collection('users').doc(currentUser.uid).update({
+                await window.db.collection('users').doc(currentUser.uid).update({
                     fcmToken: this.token,
                     notificationsEnabled: true
                 });
@@ -7940,7 +7940,7 @@ const VideoDate = {
     sendSignal(type, data) {
         if (!this.currentMatchId || !currentUser) return;
         
-        db.collection('videoCalls').add({
+        window.db.collection('videoCalls').add({
             matchId: this.currentMatchId,
             from: currentUser.uid,
             type: type,
@@ -8220,7 +8220,7 @@ const WelcomeExperience = {
         
         // Mark welcome as shown
         if (currentUser) {
-            db.collection('users').doc(currentUser.uid).update({
+            window.db.collection('users').doc(currentUser.uid).update({
                 welcomeShown: true
             });
         }
@@ -8230,7 +8230,7 @@ const WelcomeExperience = {
     async checkAndShow() {
         if (!currentUser) return;
         
-        const userDoc = await db.collection('users').doc(currentUser.uid).get();
+        const userDoc = await window.db.collection('users').doc(currentUser.uid).get();
         const userData = userDoc.data();
         
         if (userData && !userData.welcomeShown) {
@@ -8300,11 +8300,11 @@ async function showAISuggestions() {
     // Get current match profile
     let matchProfile = null;
     if (currentChatMatchId) {
-        const matchDoc = await db.collection('matches').doc(currentChatMatchId).get();
+        const matchDoc = await window.db.collection('matches').doc(currentChatMatchId).get();
         if (matchDoc.exists) {
             const matchData = matchDoc.data();
             const otherUserId = matchData.users.find(id => id !== currentUser.uid);
-            const userDoc = await db.collection('users').doc(otherUserId).get();
+            const userDoc = await window.db.collection('users').doc(otherUserId).get();
             matchProfile = userDoc.data();
         }
     }
@@ -8373,7 +8373,7 @@ async function startVideoDate() {
     }
     
     // Get match info
-    const matchDoc = await db.collection('matches').doc(currentChatMatchId).get();
+    const matchDoc = await window.db.collection('matches').doc(currentChatMatchId).get();
     if (!matchDoc.exists) {
         showToast('Match non trovato', 'error');
         return;
@@ -8381,7 +8381,7 @@ async function startVideoDate() {
     
     const matchData = matchDoc.data();
     const otherUserId = matchData.users.find(id => id !== currentUser.uid);
-    const userDoc = await db.collection('users').doc(otherUserId).get();
+    const userDoc = await window.db.collection('users').doc(otherUserId).get();
     const matchName = userDoc.exists ? userDoc.data().name : 'Match';
     
     // Confirm before starting
@@ -8394,7 +8394,7 @@ async function startVideoDate() {
 function listenForVideoCalls() {
     if (!currentUser) return;
     
-    db.collection('videoCalls')
+    window.db.collection('videoCalls')
         .where('to', '==', currentUser.uid)
         .where('type', '==', 'offer')
         .orderBy('timestamp', 'desc')
@@ -8415,7 +8415,7 @@ function listenForVideoCalls() {
 }
 
 async function handleIncomingVideoCall(callData) {
-    const userDoc = await db.collection('users').doc(callData.from).get();
+    const userDoc = await window.db.collection('users').doc(callData.from).get();
     const callerName = userDoc.exists ? userDoc.data().name : 'Qualcuno';
     
     VideoDate.handleIncomingCall(
@@ -8471,7 +8471,7 @@ const WalletSystem = {
         const user = FlameAuth.currentUser;
         if (!user) return 0;
         try {
-            const doc = await firebase.firestore().collection('users').doc(user.uid).get();
+            const doc = await window.window.db.collection('users').doc(user.uid).get();
             return doc.exists ? (doc.data().flameCoins || 50) : 50;
         } catch (e) {
             console.error('Error getting balance:', e);
@@ -8483,10 +8483,10 @@ const WalletSystem = {
         const user = FlameAuth.currentUser;
         if (!user) return false;
         try {
-            await firebase.firestore().collection('users').doc(user.uid).update({
+            await window.window.db.collection('users').doc(user.uid).update({
                 flameCoins: firebase.firestore.FieldValue.increment(amount)
             });
-            await firebase.firestore().collection('users').doc(user.uid).collection('transactions').add({
+            await window.window.db.collection('users').doc(user.uid).collection('transactions').add({
                 type: 'credit',
                 amount: amount,
                 reason: reason,
@@ -8505,7 +8505,7 @@ const WalletSystem = {
         
         try {
             // Get current document
-            const userRef = firebase.firestore().collection('users').doc(user.uid);
+            const userRef = window.window.db.collection('users').doc(user.uid);
             const doc = await userRef.get();
             
             // Get or initialize balance
@@ -8547,7 +8547,7 @@ const WalletSystem = {
         const user = FlameAuth.currentUser;
         if (!user) return [];
         try {
-            const snap = await firebase.firestore()
+            const snap = await window.db
                 .collection('users').doc(user.uid)
                 .collection('transactions')
                 .orderBy('timestamp', 'desc')
@@ -8716,7 +8716,7 @@ const VirtualGifts = {
         if (!spent) return false;
         
         try {
-            await firebase.firestore().collection('gifts').add({
+            await window.window.db.collection('gifts').add({
                 senderId: user.uid,
                 recipientId: recipientId,
                 giftId: giftId,
@@ -8980,7 +8980,7 @@ class VoiceMessages {
         const chatId = [window.currentUser.odoringu, window.currentChatUserId].sort().join('_');
         
         try {
-            await firebase.firestore().collection('chats').doc(chatId).collection('messages').add({
+            await window.window.db.collection('chats').doc(chatId).collection('messages').add({
                 senderId: window.currentUser.uid,
                 type: 'voice',
                 audioData: audioData,
@@ -9092,7 +9092,7 @@ class StoriesSystem {
         if (!window.currentUser) return '';
         
         // Get matches
-        const matchesSnap = await firebase.firestore()
+        const matchesSnap = await window.db
             .collection('users').doc(window.currentUser.uid)
             .collection('matches').get();
         
@@ -9105,7 +9105,7 @@ class StoriesSystem {
         let storiesHTML = '';
         
         for (const userId of matchIds.slice(0, 10)) { // Max 10
-            const storiesSnap = await firebase.firestore()
+            const storiesSnap = await window.db
                 .collection('users').doc(userId)
                 .collection('stories')
                 .where('createdAt', '>', oneDayAgo)
@@ -9115,7 +9115,7 @@ class StoriesSystem {
             
             if (storiesSnap.empty && userId !== window.currentUser.uid) continue;
             
-            const userDoc = await firebase.firestore().collection('users').doc(userId).get();
+            const userDoc = await window.window.db.collection('users').doc(userId).get();
             const userData = userDoc.data() || {};
             const hasStory = !storiesSnap.empty;
             const isMe = userId === window.currentUser.uid;
@@ -9278,7 +9278,7 @@ class StoriesSystem {
             const data = await res.json();
             
             // Save to Firestore
-            await firebase.firestore()
+            await window.db
                 .collection('users').doc(window.currentUser.uid)
                 .collection('stories').add({
                     type: type,
@@ -9366,7 +9366,7 @@ class StoriesSystem {
         }
         
         try {
-            await firebase.firestore()
+            await window.db
                 .collection('users').doc(window.currentUser.uid)
                 .collection('stories').add({
                     type: 'text',
@@ -9391,7 +9391,7 @@ class StoriesSystem {
     async viewStories(userId) {
         const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
         
-        const storiesSnap = await firebase.firestore()
+        const storiesSnap = await window.db
             .collection('users').doc(userId)
             .collection('stories')
             .where('createdAt', '>', oneDayAgo)
@@ -9415,7 +9415,7 @@ class StoriesSystem {
         
         // Mark as viewed
         if (story.userId !== window.currentUser?.uid) {
-            firebase.firestore()
+            window.db
                 .collection('users').doc(story.userId)
                 .collection('stories').doc(story.id)
                 .update({
@@ -9547,7 +9547,7 @@ class StoriesSystem {
         if (!story || story.userId === window.currentUser?.uid) return;
         
         try {
-            await firebase.firestore()
+            await window.db
                 .collection('users').doc(story.userId)
                 .collection('stories').doc(story.id)
                 .update({
@@ -10036,7 +10036,7 @@ class IcebreakerGames {
         };
         
         try {
-            await firebase.firestore().collection('chats').doc(chatId).collection('messages').add({
+            await window.window.db.collection('chats').doc(chatId).collection('messages').add({
                 senderId: window.currentUser.uid,
                 type: 'game',
                 gameType: gameType,
@@ -10172,7 +10172,7 @@ class MessageReactions {
         const chatId = [window.currentUser.uid, window.currentChatUserId].sort().join('_');
         
         try {
-            const msgRef = firebase.firestore()
+            const msgRef = window.db
                 .collection('chats').doc(chatId)
                 .collection('messages').doc(this.selectedMessageId);
             
@@ -10363,7 +10363,7 @@ class VideoChat {
             // ICE candidates
             this.peerConnection.onicecandidate = async (event) => {
                 if (event.candidate) {
-                    await firebase.firestore().collection('calls').doc(this.callId)
+                    await window.window.db.collection('calls').doc(this.callId)
                         .collection('callerCandidates').add(event.candidate.toJSON());
                 }
             };
@@ -10373,7 +10373,7 @@ class VideoChat {
             await this.peerConnection.setLocalDescription(offer);
             
             // Save call to Firebase
-            await firebase.firestore().collection('calls').doc(this.callId).set({
+            await window.window.db.collection('calls').doc(this.callId).set({
                 callerId: window.currentUser.uid,
                 receiverId: window.currentChatUserId,
                 offer: { type: offer.type, sdp: offer.sdp },
@@ -10382,7 +10382,7 @@ class VideoChat {
             });
             
             // Listen for answer
-            this.callListener = firebase.firestore().collection('calls').doc(this.callId)
+            this.callListener = window.window.db.collection('calls').doc(this.callId)
                 .onSnapshot(async (doc) => {
                     const data = doc.data();
                     if (!data) return;
@@ -10398,7 +10398,7 @@ class VideoChat {
                 });
             
             // Listen for ICE candidates from receiver
-            firebase.firestore().collection('calls').doc(this.callId)
+            window.window.db.collection('calls').doc(this.callId)
                 .collection('receiverCandidates').onSnapshot((snapshot) => {
                     snapshot.docChanges().forEach(async (change) => {
                         if (change.type === 'added') {
@@ -10431,7 +10431,7 @@ class VideoChat {
             this.showCallUI();
             
             // Get call data
-            const callDoc = await firebase.firestore().collection('calls').doc(callId).get();
+            const callDoc = await window.window.db.collection('calls').doc(callId).get();
             const callData = callDoc.data();
             
             // Create peer connection
@@ -10451,7 +10451,7 @@ class VideoChat {
             // ICE candidates
             this.peerConnection.onicecandidate = async (event) => {
                 if (event.candidate) {
-                    await firebase.firestore().collection('calls').doc(callId)
+                    await window.window.db.collection('calls').doc(callId)
                         .collection('receiverCandidates').add(event.candidate.toJSON());
                 }
             };
@@ -10464,13 +10464,13 @@ class VideoChat {
             await this.peerConnection.setLocalDescription(answer);
             
             // Save answer to Firebase
-            await firebase.firestore().collection('calls').doc(callId).update({
+            await window.window.db.collection('calls').doc(callId).update({
                 answer: { type: answer.type, sdp: answer.sdp },
                 status: 'connected'
             });
             
             // Listen for ICE candidates from caller
-            firebase.firestore().collection('calls').doc(callId)
+            window.window.db.collection('calls').doc(callId)
                 .collection('callerCandidates').onSnapshot((snapshot) => {
                     snapshot.docChanges().forEach(async (change) => {
                         if (change.type === 'added') {
@@ -10619,7 +10619,7 @@ class VideoChat {
         
         // Update call status
         if (this.callId) {
-            await firebase.firestore().collection('calls').doc(this.callId).update({
+            await window.window.db.collection('calls').doc(this.callId).update({
                 status: 'ended',
                 endedAt: firebase.firestore.FieldValue.serverTimestamp()
             }).catch(() => {});
@@ -10652,7 +10652,7 @@ class VideoChat {
     listenForCalls() {
         if (!window.currentUser) return;
         
-        firebase.firestore().collection('calls')
+        window.window.db.collection('calls')
             .where('receiverId', '==', window.currentUser.uid)
             .where('status', '==', 'calling')
             .onSnapshot(async (snapshot) => {
@@ -10673,7 +10673,7 @@ class VideoChat {
 
     async showIncomingCall(callId, callerId) {
         // Get caller info
-        const callerDoc = await firebase.firestore().collection('users').doc(callerId).get();
+        const callerDoc = await window.window.db.collection('users').doc(callerId).get();
         const caller = callerDoc.data() || {};
         
         const modal = document.createElement('div');
@@ -10745,7 +10745,7 @@ class VideoChat {
     async rejectCall(callId) {
         document.getElementById('incomingCallModal')?.remove();
         
-        await firebase.firestore().collection('calls').doc(callId).update({
+        await window.window.db.collection('calls').doc(callId).update({
             status: 'rejected'
         }).catch(() => {});
     }
@@ -10830,7 +10830,7 @@ const ReadReceiptsSystem = {
         if (!window.db) return;
         
         try {
-            await window.db.collection('chats').doc(chatId)
+            await window.window.db.collection('chats').doc(chatId)
                 .collection('messages').doc(messageId)
                 .update({ status: status, statusUpdatedAt: firebase.firestore.FieldValue.serverTimestamp() });
         } catch (e) {
@@ -10843,13 +10843,13 @@ const ReadReceiptsSystem = {
         if (!window.db || !chatId || !currentUserId) return;
         
         try {
-            const messagesRef = window.db.collection('chats').doc(chatId).collection('messages');
+            const messagesRef = window.window.db.collection('chats').doc(chatId).collection('messages');
             const unreadMessages = await messagesRef
                 .where('senderId', '!=', currentUserId)
                 .where('status', 'in', ['sent', 'delivered'])
                 .get();
             
-            const batch = window.db.batch();
+            const batch = window.window.db.batch();
             unreadMessages.forEach(doc => {
                 batch.update(doc.ref, { 
                     status: 'read', 
@@ -11849,7 +11849,7 @@ const ProfilePrompts = {
         // Save to Firebase
         if (window.db && window.currentUser) {
             try {
-                const userRef = window.db.collection('users').doc(window.currentUser.id);
+                const userRef = window.window.db.collection('users').doc(window.currentUser.id);
                 const userDoc = await userRef.get();
                 const userData = userDoc.data() || {};
                 
@@ -12200,7 +12200,7 @@ const MoodStatus = {
         // Save to Firebase
         if (window.db && window.currentUser) {
             try {
-                await window.db.collection('users').doc(window.currentUser.id).update({
+                await window.window.db.collection('users').doc(window.currentUser.id).update({
                     currentMood: moodId,
                     moodUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
@@ -12224,7 +12224,7 @@ const MoodStatus = {
     async clearMood() {
         if (window.db && window.currentUser) {
             try {
-                await window.db.collection('users').doc(window.currentUser.id).update({
+                await window.window.db.collection('users').doc(window.currentUser.id).update({
                     currentMood: null
                 });
                 window.currentUser.currentMood = null;

@@ -15,7 +15,7 @@ const FlameAuth = {
     
     // Inizializza listener autenticazione
     init() {
-        auth.onAuthStateChanged(async (user) => {
+        window.auth.onAuthStateChanged(async (user) => {
             if (user) {
                 this.currentUser = user;
                 this.userProfile = await FlameUsers.getProfile(user.uid);
@@ -42,7 +42,7 @@ const FlameAuth = {
     async signUp(email, password, userData) {
         try {
             // Crea account
-            const result = await auth.createUserWithEmailAndPassword(email, password);
+            const result = await window.auth.createUserWithEmailAndPassword(email, password);
             const user = result.user;
             
             // Invia email di verifica
@@ -76,7 +76,7 @@ const FlameAuth = {
     // Login con email
     async signIn(email, password) {
         try {
-            const result = await auth.signInWithEmailAndPassword(email, password);
+            const result = await window.auth.signInWithEmailAndPassword(email, password);
             
             // Aggiorna ultimo accesso
             await FlameUsers.updateProfile(result.user.uid, {
@@ -97,7 +97,7 @@ const FlameAuth = {
             provider.addScope('email');
             provider.addScope('profile');
             
-            const result = await auth.signInWithPopup(provider);
+            const result = await window.auth.signInWithPopup(provider);
             const user = result.user;
             
             // Controlla se è un nuovo utente
@@ -131,7 +131,7 @@ const FlameAuth = {
             provider.addScope('email');
             provider.addScope('public_profile');
             
-            const result = await auth.signInWithPopup(provider);
+            const result = await window.auth.signInWithPopup(provider);
             const user = result.user;
             
             if (result.additionalUserInfo.isNewUser) {
@@ -162,7 +162,7 @@ const FlameAuth = {
                     isOnline: false
                 });
             }
-            await auth.signOut();
+            await window.auth.signOut();
             return { success: true };
         } catch (error) {
             return { success: false, error: error.message };
@@ -172,7 +172,7 @@ const FlameAuth = {
     // Reset password
     async resetPassword(email) {
         try {
-            await auth.sendPasswordResetEmail(email);
+            await window.auth.sendPasswordResetEmail(email);
             return { success: true };
         } catch (error) {
             return { success: false, error: this.getErrorMessage(error.code) };
@@ -234,7 +234,7 @@ const FlameUsers = {
     // Crea profilo utente
     async createProfile(uid, data) {
         try {
-            await db.collection('users').doc(uid).set(data);
+            await window.db.collection('users').doc(uid).set(data);
             return { success: true };
         } catch (error) {
             console.error('Errore creazione profilo:', error);
@@ -247,7 +247,7 @@ const FlameUsers = {
         console.log('📖 getProfile chiamato per UID:', uid);
         
         // Check if db is initialized
-        if (!db) {
+        if (!window.db) {
             console.error('❌ Firestore db non inizializzato!');
             return null;
         }
@@ -258,7 +258,7 @@ const FlameUsers = {
                 setTimeout(() => reject(new Error('Timeout Firestore (10s)')), 10000)
             );
             
-            const queryPromise = db.collection('users').doc(uid).get();
+            const queryPromise = window.db.collection('users').doc(uid).get();
             
             const doc = await Promise.race([queryPromise, timeoutPromise]);
             
@@ -277,7 +277,7 @@ const FlameUsers = {
     // Aggiorna profilo
     async updateProfile(uid, data) {
         try {
-            await db.collection('users').doc(uid).update(data);
+            await window.db.collection('users').doc(uid).update(data);
             return { success: true };
         } catch (error) {
             console.error('Errore aggiornamento profilo:', error);
@@ -371,7 +371,7 @@ const FlameUsers = {
             const alreadySwiped = [...(profile.likes || []), ...(profile.dislikes || [])];
             
             // Query base
-            let query = db.collection('users')
+            let query = window.db.collection('users')
                 .where('gender', '==', settings.showMe || 'female')
                 .limit(limit + alreadySwiped.length); // Prendiamo di più per filtrare
             
@@ -419,7 +419,7 @@ const FlameUsers = {
     // Segnala profilo
     async reportProfile(reporterUid, reportedUid, reason, details = '') {
         try {
-            await db.collection('reports').add({
+            await window.db.collection('reports').add({
                 reporter: reporterUid,
                 reported: reportedUid,
                 reason: reason,
@@ -436,7 +436,7 @@ const FlameUsers = {
     // Blocca utente
     async blockUser(uid, blockedUid) {
         try {
-            await db.collection('users').doc(uid).update({
+            await window.db.collection('users').doc(uid).update({
                 blockedUsers: firebase.firestore.FieldValue.arrayUnion(blockedUid)
             });
             return { success: true };
@@ -449,7 +449,7 @@ const FlameUsers = {
     async deleteAllUserData(uid) {
         try {
             // Elimina profilo
-            await db.collection('users').doc(uid).delete();
+            await window.db.collection('users').doc(uid).delete();
             
             // Elimina foto
             const photosRef = storage.ref(`users/${uid}/photos`);
@@ -457,18 +457,18 @@ const FlameUsers = {
             await Promise.all(photos.items.map(photo => photo.delete()));
             
             // Elimina messaggi
-            const messagesQuery = await db.collection('messages')
+            const messagesQuery = await window.db.collection('messages')
                 .where('participants', 'array-contains', uid)
                 .get();
-            const batch = db.batch();
+            const batch = window.db.batch();
             messagesQuery.forEach(doc => batch.delete(doc.ref));
             await batch.commit();
             
             // Elimina matches
-            const matchesQuery = await db.collection('matches')
+            const matchesQuery = await window.db.collection('matches')
                 .where('users', 'array-contains', uid)
                 .get();
-            const batch2 = db.batch();
+            const batch2 = window.db.batch();
             matchesQuery.forEach(doc => batch2.delete(doc.ref));
             await batch2.commit();
             
@@ -490,12 +490,12 @@ const FlameMatch = {
     async like(currentUid, targetUid) {
         try {
             // Aggiungi ai likes
-            await db.collection('users').doc(currentUid).update({
+            await window.db.collection('users').doc(currentUid).update({
                 likes: firebase.firestore.FieldValue.arrayUnion(targetUid)
             });
             
             // Registra lo swipe
-            await db.collection('swipes').add({
+            await window.db.collection('swipes').add({
                 from: currentUid,
                 to: targetUid,
                 type: 'like',
@@ -503,11 +503,11 @@ const FlameMatch = {
             });
             
             // Incrementa likesReceived sul profilo target (per Esplora Popolari)
-            await db.collection('users').doc(targetUid).update({
+            await window.db.collection('users').doc(targetUid).update({
                 likesReceived: firebase.firestore.FieldValue.increment(1)
             }).catch(() => {
                 // Se il campo non esiste, crealo
-                db.collection('users').doc(targetUid).set({
+                window.db.collection('users').doc(targetUid).set({
                     likesReceived: 1
                 }, { merge: true });
             });
@@ -534,7 +534,7 @@ const FlameMatch = {
             const today = new Date();
             today.setHours(0, 0, 0, 0);
             
-            const superLikesQuery = await db.collection('swipes')
+            const superLikesQuery = await window.db.collection('swipes')
                 .where('from', '==', currentUid)
                 .where('type', '==', 'superlike')
                 .where('timestamp', '>=', firebase.firestore.Timestamp.fromDate(today))
@@ -548,12 +548,12 @@ const FlameMatch = {
             }
             
             // Aggiungi ai likes
-            await db.collection('users').doc(currentUid).update({
+            await window.db.collection('users').doc(currentUid).update({
                 likes: firebase.firestore.FieldValue.arrayUnion(targetUid)
             });
             
             // Registra lo swipe
-            await db.collection('swipes').add({
+            await window.db.collection('swipes').add({
                 from: currentUid,
                 to: targetUid,
                 type: 'superlike',
@@ -561,10 +561,10 @@ const FlameMatch = {
             });
             
             // Incrementa likesReceived sul profilo target (Super Like vale +3)
-            await db.collection('users').doc(targetUid).update({
+            await window.db.collection('users').doc(targetUid).update({
                 likesReceived: firebase.firestore.FieldValue.increment(3)
             }).catch(() => {
-                db.collection('users').doc(targetUid).set({
+                window.db.collection('users').doc(targetUid).set({
                     likesReceived: 3
                 }, { merge: true });
             });
@@ -592,11 +592,11 @@ const FlameMatch = {
     // Registra un Dislike (Nope)
     async dislike(currentUid, targetUid) {
         try {
-            await db.collection('users').doc(currentUid).update({
+            await window.db.collection('users').doc(currentUid).update({
                 dislikes: firebase.firestore.FieldValue.arrayUnion(targetUid)
             });
             
-            await db.collection('swipes').add({
+            await window.db.collection('swipes').add({
                 from: currentUid,
                 to: targetUid,
                 type: 'dislike',
@@ -615,7 +615,7 @@ const FlameMatch = {
             const matchId = [user1, user2].sort().join('_');
             
             // Crea documento match
-            await db.collection('matches').doc(matchId).set({
+            await window.db.collection('matches').doc(matchId).set({
                 users: [user1, user2],
                 createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                 lastMessage: null,
@@ -623,10 +623,10 @@ const FlameMatch = {
             });
             
             // Aggiorna entrambi i profili
-            await db.collection('users').doc(user1).update({
+            await window.db.collection('users').doc(user1).update({
                 matches: firebase.firestore.FieldValue.arrayUnion(user2)
             });
-            await db.collection('users').doc(user2).update({
+            await window.db.collection('users').doc(user2).update({
                 matches: firebase.firestore.FieldValue.arrayUnion(user1)
             });
             
@@ -651,7 +651,7 @@ const FlameMatch = {
     // Ottieni tutti i match di un utente
     async getMatches(uid) {
         try {
-            const snapshot = await db.collection('matches')
+            const snapshot = await window.db.collection('matches')
                 .where('users', 'array-contains', uid)
                 .orderBy('lastMessageTime', 'desc')
                 .get();
@@ -692,21 +692,21 @@ const FlameMatch = {
             const matchId = [currentUid, matchedUid].sort().join('_');
             
             // Elimina match
-            await db.collection('matches').doc(matchId).delete();
+            await window.db.collection('matches').doc(matchId).delete();
             
             // Rimuovi dai matches di entrambi
-            await db.collection('users').doc(currentUid).update({
+            await window.db.collection('users').doc(currentUid).update({
                 matches: firebase.firestore.FieldValue.arrayRemove(matchedUid)
             });
-            await db.collection('users').doc(matchedUid).update({
+            await window.db.collection('users').doc(matchedUid).update({
                 matches: firebase.firestore.FieldValue.arrayRemove(currentUid)
             });
             
             // Elimina conversazione
-            const messagesQuery = await db.collection('messages')
+            const messagesQuery = await window.db.collection('messages')
                 .where('matchId', '==', matchId)
                 .get();
-            const batch = db.batch();
+            const batch = window.db.batch();
             messagesQuery.forEach(doc => batch.delete(doc.ref));
             await batch.commit();
             
@@ -731,7 +731,7 @@ const FlameChat = {
     async sendMessage(matchId, fromUid, text, type = 'text') {
         try {
             // Crea messaggio
-            const messageRef = await db.collection('messages').add({
+            const messageRef = await window.db.collection('messages').add({
                 matchId: matchId,
                 from: fromUid,
                 text: text,
@@ -741,7 +741,7 @@ const FlameChat = {
             });
             
             // Aggiorna ultimo messaggio nel match
-            await db.collection('matches').doc(matchId).update({
+            await window.db.collection('matches').doc(matchId).update({
                 lastMessage: text.substring(0, 50),
                 lastMessageTime: firebase.firestore.FieldValue.serverTimestamp()
             });
@@ -780,7 +780,7 @@ const FlameChat = {
     // Carica messaggi (con paginazione)
     async loadMessages(matchId, limit = 50, lastDoc = null) {
         try {
-            let query = db.collection('messages')
+            let query = window.db.collection('messages')
                 .where('matchId', '==', matchId)
                 .orderBy('timestamp', 'desc')
                 .limit(limit);
@@ -813,7 +813,7 @@ const FlameChat = {
             this.unsubscribe();
         }
         
-        this.unsubscribe = db.collection('messages')
+        this.unsubscribe = window.db.collection('messages')
             .where('matchId', '==', matchId)
             .orderBy('timestamp', 'desc')
             .limit(1)
@@ -840,12 +840,12 @@ const FlameChat = {
     // Segna messaggi come letti
     async markAsRead(matchId, currentUid) {
         try {
-            const query = await db.collection('messages')
+            const query = await window.db.collection('messages')
                 .where('matchId', '==', matchId)
                 .where('read', '==', false)
                 .get();
             
-            const batch = db.batch();
+            const batch = window.db.batch();
             query.forEach(doc => {
                 const data = doc.data();
                 if (data.from !== currentUid) {
@@ -870,7 +870,7 @@ const FlameChat = {
             
             for (const matchedUid of matches) {
                 const matchId = [uid, matchedUid].sort().join('_');
-                const query = await db.collection('messages')
+                const query = await window.db.collection('messages')
                     .where('matchId', '==', matchId)
                     .where('from', '!=', uid)
                     .where('read', '==', false)
@@ -887,9 +887,9 @@ const FlameChat = {
     // Elimina messaggio
     async deleteMessage(messageId, currentUid) {
         try {
-            const doc = await db.collection('messages').doc(messageId).get();
+            const doc = await window.db.collection('messages').doc(messageId).get();
             if (doc.exists && doc.data().from === currentUid) {
-                await db.collection('messages').doc(messageId).delete();
+                await window.db.collection('messages').doc(messageId).delete();
                 return { success: true };
             }
             return { success: false, error: 'Non autorizzato' };
@@ -909,7 +909,7 @@ const FlameNotifications = {
     // Invia notifica (salva nel database)
     async send(uid, data) {
         try {
-            await db.collection('notifications').add({
+            await window.db.collection('notifications').add({
                 userId: uid,
                 ...data,
                 read: false,
@@ -924,7 +924,7 @@ const FlameNotifications = {
     // Ottieni notifiche utente
     async getNotifications(uid, limit = 50) {
         try {
-            const snapshot = await db.collection('notifications')
+            const snapshot = await window.db.collection('notifications')
                 .where('userId', '==', uid)
                 .orderBy('createdAt', 'desc')
                 .limit(limit)
@@ -944,7 +944,7 @@ const FlameNotifications = {
     // Segna come letta
     async markAsRead(notificationId) {
         try {
-            await db.collection('notifications').doc(notificationId).update({
+            await window.db.collection('notifications').doc(notificationId).update({
                 read: true
             });
             return { success: true };
@@ -956,12 +956,12 @@ const FlameNotifications = {
     // Segna tutte come lette
     async markAllAsRead(uid) {
         try {
-            const query = await db.collection('notifications')
+            const query = await window.db.collection('notifications')
                 .where('userId', '==', uid)
                 .where('read', '==', false)
                 .get();
             
-            const batch = db.batch();
+            const batch = window.db.batch();
             query.forEach(doc => batch.update(doc.ref, { read: true }));
             await batch.commit();
             
@@ -1038,7 +1038,7 @@ const FlamePremium = {
             });
             
             // Registra transazione
-            await db.collection('transactions').add({
+            await window.db.collection('transactions').add({
                 userId: uid,
                 planId: planId,
                 amount: plan.price,
@@ -1103,7 +1103,7 @@ const FlameAnalytics = {
     // Traccia evento
     async track(uid, event, data = {}) {
         try {
-            await db.collection('analytics').add({
+            await window.db.collection('analytics').add({
                 userId: uid,
                 event: event,
                 data: data,
@@ -1122,12 +1122,12 @@ const FlameAnalytics = {
             const profile = await FlameUsers.getProfile(uid);
             
             // Conta swipes ricevuti
-            const likesReceived = await db.collection('swipes')
+            const likesReceived = await window.db.collection('swipes')
                 .where('to', '==', uid)
                 .where('type', '==', 'like')
                 .get();
             
-            const superLikesReceived = await db.collection('swipes')
+            const superLikesReceived = await window.db.collection('swipes')
                 .where('to', '==', uid)
                 .where('type', '==', 'superlike')
                 .get();

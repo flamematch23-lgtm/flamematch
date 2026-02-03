@@ -16,9 +16,13 @@ const firebaseConfig = {
 // Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 
-// Initialize Firebase services
-const auth = firebase.auth();
-const db = firebase.firestore();
+// Initialize Firebase services - GLOBAL variables
+window.auth = firebase.auth();
+window.db = firebase.firestore();
+
+// Also create local references for compatibility
+const auth = window.auth;
+const db = window.db;
 
 // Imposta persistenza LOCAL per mantenere il login
 auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
@@ -34,8 +38,10 @@ db.enablePersistence().catch((err) => {
     if (err.code === 'failed-precondition') {
         console.log('Multiple tabs open, persistence enabled in one tab only');
     } else if (err.code === 'unimplemented') {
-        console.log('Browser doesn\'t support persistence');
+        console.log('Browser doesnt support persistence');
     }
 });
 
 console.log('🔥 FlameMatch Firebase inizializzato');
+console.log('✅ window.db disponibile:', !!window.db);
+console.log('✅ window.auth disponibile:', !!window.auth);
