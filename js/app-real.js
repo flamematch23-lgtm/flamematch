@@ -1,3 +1,31 @@
+// 🚨 EMERGENCY BYPASS - Fires after 10 seconds no matter what
+console.log('⏱️ Emergency bypass timer started (10s)');
+window.emergencyBypassFired = false;
+
+window.emergencyBypass = setTimeout(() => {
+    console.warn('🚨🚨🚨 EMERGENCY BYPASS! 10 secondi passati!');
+    window.emergencyBypassFired = true;
+    
+    // Hide loading overlay
+    const overlay = document.getElementById('loadingOverlay');
+    if (overlay) {
+        overlay.style.display = 'none';
+        console.log('✅ Loading overlay nascosto');
+    }
+    
+    // Alert user
+    alert('Caricamento lento! L\'app continuerà con funzionalità limitate.');
+    
+}, 10000);
+
+// Cancel bypass when page fully loads
+window.cancelEmergencyBypass = () => {
+    if (window.emergencyBypass) {
+        clearTimeout(window.emergencyBypass);
+        console.log('✅ Emergency bypass cancellato');
+    }
+};
+
 /* ==========================================
    FlameMatch - App JavaScript (100% REAL)
    NO DEMO - Solo utenti reali da Firebase
