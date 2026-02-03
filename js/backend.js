@@ -276,7 +276,7 @@ const FlameUsers = {
             console.log('🔄 Esecuzione query get()...');
             
             // Add .catch to query itself
-            const queryPromise = docRef.get().then(doc => {
+            const queryPromise = docRef.get({ source: 'server' }).then(doc => {
                 clearTimeout(timeoutId);
                 console.log('📥 Query completata!');
                 return doc;

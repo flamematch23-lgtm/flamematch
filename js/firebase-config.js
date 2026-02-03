@@ -33,14 +33,15 @@ auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
         console.error('Errore persistenza:', error);
     });
 
-// Enable persistence for offline support
-db.enablePersistence().catch((err) => {
-    if (err.code === 'failed-precondition') {
-        console.log('Multiple tabs open, persistence enabled in one tab only');
-    } else if (err.code === 'unimplemented') {
-        console.log('Browser doesnt support persistence');
-    }
-});
+// Persistence disabled to avoid cache issues
+// db.enablePersistence().catch((err) => {
+//     if (err.code === 'failed-precondition') {
+//         console.log('Multiple tabs open, persistence enabled in one tab only');
+//     } else if (err.code === 'unimplemented') {
+//         console.log('Browser doesnt support persistence');
+//     }
+// });
+console.log('ℹ️ Firestore persistence disabilitata');
 
 console.log('🔥 FlameMatch Firebase inizializzato');
 console.log('✅ window.db disponibile:', !!window.db);
