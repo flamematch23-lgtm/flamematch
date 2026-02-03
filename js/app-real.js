@@ -3,9 +3,9 @@ console.log('⏱️ COUNTDOWN BYPASS STARTED');
 window.bypassCounter = 0;
 window.bypassCancelled = false;
 
-window.bypassInterval = setInterval(() => {
+window.bypassInterval = setInterval(function() {
     window.bypassCounter++;
-    console.log('⏱️ Countdown:', window.bypassCounter, '/ 10 secondi');
+    console.log('⏱️ Countdown: ' + window.bypassCounter + ' / 10 secondi');
     
     if (window.bypassCancelled) {
         clearInterval(window.bypassInterval);
@@ -18,7 +18,7 @@ window.bypassInterval = setInterval(() => {
         console.warn('🚨🚨🚨 BYPASS ATTIVATO dopo 10 secondi!');
         
         // Hide loading
-        const overlay = document.getElementById('loadingOverlay');
+        var overlay = document.getElementById('loadingOverlay');
         if (overlay && overlay.style.display !== 'none') {
             overlay.style.display = 'none';
             document.body.style.overflow = 'auto';
@@ -28,7 +28,7 @@ window.bypassInterval = setInterval(() => {
     }
 }, 1000);
 
-window.cancelEmergencyBypass = () => {
+window.cancelEmergencyBypass = function() {
     window.bypassCancelled = true;
 };
 
@@ -3603,11 +3603,11 @@ function showBlurredLikes() {
     // Crea card fake con aspetto realistico
     const fakeProfiles = [
         { gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', icon: '👩', name: 'S***a', age: '2*' },
-        { gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', icon: '👱‍♀️', name: 'M***a', age: '2*' },
-        { gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', icon: '👩‍🦰', name: 'G***a', age: '2*' },
+        { gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', icon: '💁', name: 'M***a', age: '2*' },
+        { gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', icon: '💃', name: 'G***a', age: '2*' },
         { gradient: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)', icon: '👧', name: 'L***a', age: '2*' },
-        { gradient: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)', icon: '👩‍🦱', name: 'E***a', age: '2*' },
-        { gradient: 'linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)', icon: '👱‍♀️', name: 'C***a', age: '2*' }
+        { gradient: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)', icon: '🙋', name: 'E***a', age: '2*' },
+        { gradient: 'linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)', icon: '💁', name: 'C***a', age: '2*' }
     ];
     
     const cardsHtml = fakeProfiles.map(p => \`
