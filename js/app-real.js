@@ -100,18 +100,40 @@ let userPremiumData = {
 // INITIALIZATION
 // ==========================================
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('🔥 FlameMatch App - Modalità REALE (v=61)');
+    console.log('🔥 FlameMatch App - Modalità REALE (v=63)');
+    
+    // Safety timeout - se il caricamento impiega troppo, nascondi loading
+    const safetyTimeout = setTimeout(() => {
+        console.warn('⚠️ Safety timeout (15s) - forzando hide del loading');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        if (loadingOverlay) {
+            loadingOverlay.classList.remove('show');
+            loadingOverlay.style.display = 'none';
+        }
+    }, 15000);
+    window.safetyTimeoutId = safetyTimeout;
     
     // Inizializza EmailJS per email di benvenuto
     if (window.FlameEmail) {
         window.FlameEmail.init();
     }
     
-    // Aspetta che Firebase sia pronto
-    await waitForFirebase();
-    
-    // Controlla autenticazione
-    checkAuth();
+    try {
+        // Aspetta che Firebase sia pronto
+        await waitForFirebase();
+        
+        // Controlla autenticazione
+        checkAuth();
+    } catch (error) {
+        console.error('❌ Errore inizializzazione:', error);
+        clearTimeout(safetyTimeout);
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        if (loadingOverlay) {
+            loadingOverlay.classList.remove('show');
+            loadingOverlay.style.display = 'none';
+        }
+        alert('Errore di connessione: ' + error.message);
+    }
 });
 
 function waitForFirebase() {
@@ -153,10 +175,25 @@ function checkAuth() {
             currentUser = user;
             
             try {
-                // Carica profilo utente
+                // Carica profilo utente (con retry per race condition durante registrazione)
                 console.log('📥 Caricamento profilo utente...');
-                currentUserProfile = await FlameUsers.getProfile(user.uid);
-                console.log('✅ Profilo caricato:', currentUserProfile ? 'OK' : 'NUOVO UTENTE');
+                
+                // Prova a caricare il profilo, se non esiste aspetta e riprova
+                // (il profilo potrebbe essere in creazione durante la registrazione)
+                let retries = 0;
+                const maxRetries = 5;
+                while (retries < maxRetries) {
+                    currentUserProfile = await FlameUsers.getProfile(user.uid);
+                    if (currentUserProfile) {
+                        console.log('✅ Profilo caricato al tentativo', retries + 1);
+                        break;
+                    }
+                    console.log('⏳ Profilo non trovato, attesa... (tentativo ' + (retries + 1) + '/' + maxRetries + ')');
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    retries++;
+                }
+                
+                console.log('✅ Stato profilo:', currentUserProfile ? 'TROVATO' : 'NUOVO UTENTE');
             
             if (!currentUserProfile) {
                 // Utente nuovo, crea profilo base
@@ -220,9 +257,36 @@ function checkAuth() {
             
             console.log('🎉 Caricamento completato con successo!');
             
+            // Cancella safety timeout
+            if (window.safetyTimeoutId) {
+                clearTimeout(window.safetyTimeoutId);
+            }
+            
+            // Nascondi eventuali loading overlay
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            if (loadingOverlay) {
+                loadingOverlay.classList.remove('show');
+                loadingOverlay.style.display = 'none';
+            }
+            
+            // Mostra contenuto principale
+            const mainContent = document.querySelector('.app-content, .main-content, #mainContent');
+            if (mainContent) {
+                mainContent.style.opacity = '1';
+                mainContent.style.visibility = 'visible';
+            }
+            
             } catch (error) {
                 console.error('❌ ERRORE CRITICO nel caricamento:', error);
                 console.error('Stack:', error.stack);
+                
+                // Nascondi loading anche in caso di errore
+                const loadingOverlay = document.getElementById('loadingOverlay');
+                if (loadingOverlay) {
+                    loadingOverlay.classList.remove('show');
+                    loadingOverlay.style.display = 'none';
+                }
+                
                 // Mostra errore all'utente
                 alert('Errore di caricamento: ' + error.message + '\n\nRicarica la pagina o contatta il supporto.');
             }
