@@ -1,29 +1,35 @@
-// 🚨 EMERGENCY BYPASS - Fires after 10 seconds no matter what
-console.log('⏱️ Emergency bypass timer started (10s)');
-window.emergencyBypassFired = false;
+// 🚨 EMERGENCY BYPASS WITH COUNTDOWN
+console.log('⏱️ COUNTDOWN BYPASS STARTED');
+window.bypassCounter = 0;
+window.bypassCancelled = false;
 
-window.emergencyBypass = setTimeout(() => {
-    console.warn('🚨🚨🚨 EMERGENCY BYPASS! 10 secondi passati!');
-    window.emergencyBypassFired = true;
+window.bypassInterval = setInterval(() => {
+    window.bypassCounter++;
+    console.log('⏱️ Countdown:', window.bypassCounter, '/ 10 secondi');
     
-    // Hide loading overlay
-    const overlay = document.getElementById('loadingOverlay');
-    if (overlay) {
-        overlay.style.display = 'none';
-        console.log('✅ Loading overlay nascosto');
+    if (window.bypassCancelled) {
+        clearInterval(window.bypassInterval);
+        console.log('✅ Countdown cancellato - caricamento OK');
+        return;
     }
     
-    // Alert user
-    alert('Caricamento lento! L\'app continuerà con funzionalità limitate.');
-    
-}, 10000);
+    if (window.bypassCounter >= 10) {
+        clearInterval(window.bypassInterval);
+        console.warn('🚨🚨🚨 BYPASS ATTIVATO dopo 10 secondi!');
+        
+        // Hide loading
+        const overlay = document.getElementById('loadingOverlay');
+        if (overlay && overlay.style.display !== 'none') {
+            overlay.style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+        
+        alert('Timeout! Caricamento forzato.');
+    }
+}, 1000);
 
-// Cancel bypass when page fully loads
 window.cancelEmergencyBypass = () => {
-    if (window.emergencyBypass) {
-        clearTimeout(window.emergencyBypass);
-        console.log('✅ Emergency bypass cancellato');
-    }
+    window.bypassCancelled = true;
 };
 
 /* ==========================================
