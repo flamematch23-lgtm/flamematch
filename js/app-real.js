@@ -178,22 +178,30 @@ function checkAuth() {
                 // Carica profilo utente (con retry per race condition durante registrazione)
                 console.log('📥 Caricamento profilo utente...');
                 
-                // Prova a caricare il profilo, se non esiste aspetta e riprova
-                // (il profilo potrebbe essere in creazione durante la registrazione)
+                // Prova a caricare il profilo (max 2 tentativi, 3s timeout ciascuno)
                 let retries = 0;
-                const maxRetries = 5;
+                const maxRetries = 2;
                 while (retries < maxRetries) {
-                    console.log("🔄 Chiamata FlameUsers.getProfile..."); currentUserProfile = await FlameUsers.getProfile(user.uid); console.log("📄 Risposta getProfile:", currentUserProfile ? "TROVATO" : "NULL");
-                    if (currentUserProfile) {
-                        console.log('✅ Profilo caricato al tentativo', retries + 1);
-                        break;
+                    console.log("🔄 Tentativo", retries + 1, "di", maxRetries);
+                    try {
+                        currentUserProfile = await FlameUsers.getProfile(user.uid);
+                        console.log("📄 Risposta:", currentUserProfile ? "PROFILO TROVATO ✅" : "NULL");
+                        if (currentUserProfile) {
+                            console.log('✅ Profilo caricato!');
+                            break;
+                        }
+                    } catch (e) {
+                        console.log('⚠️ Errore getProfile:', e.message);
                     }
-                    console.log('⏳ Profilo non trovato, attesa... (tentativo ' + (retries + 1) + '/' + maxRetries + ')');
-                    await new Promise(resolve => setTimeout(resolve, 500));
+                    
+                    if (retries < maxRetries - 1) {
+                        console.log('⏳ Riprovo tra 1s...');
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                    }
                     retries++;
                 }
                 
-                console.log('✅ Stato profilo:', currentUserProfile ? 'TROVATO' : 'NUOVO UTENTE');
+                console.log('📊 Stato finale:', currentUserProfile ? 'PROFILO ESISTENTE' : 'NUOVO UTENTE - CREO PROFILO');
             
             if (!currentUserProfile) {
                 // Utente nuovo, crea profilo base

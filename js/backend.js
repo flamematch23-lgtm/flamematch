@@ -233,11 +233,17 @@ const FlameUsers = {
     
     // Crea profilo utente
     async createProfile(uid, data) {
+        console.log('📝 Creazione profilo per UID:', uid);
         try {
+            console.log('🔄 Scrittura su Firestore...');
             await window.db.collection('users').doc(uid).set(data);
+            console.log('✅ Profilo creato con successo!');
             return { success: true };
         } catch (error) {
-            console.error('Errore creazione profilo:', error);
+            console.error('❌ Errore creazione profilo:', error.code, error.message);
+            if (error.code === 'permission-denied') {
+                console.error('🔒 PROBLEMA SECURITY RULES! Vai su Firebase Console → Firestore → Rules');
+            }
             return { success: false, error: error.message };
         }
     },
@@ -252,24 +258,50 @@ const FlameUsers = {
             return null;
         }
         console.log('✅ Firestore db OK');
+        
         try {
-            // Add timeout to Firestore query
-            const timeoutPromise = new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Timeout Firestore (10s)')), 10000)
-            );
+            console.log('🔄 Creazione riferimento documento...');
+            const docRef = window.db.collection('users').doc(uid);
+            console.log('✅ Riferimento creato:', docRef.path);
             
-            const queryPromise = window.db.collection('users').doc(uid).get();
+            // Shorter timeout - 5 seconds
+            let timeoutId;
+            const timeoutPromise = new Promise((_, reject) => {
+                timeoutId = setTimeout(() => {
+                    console.error('⏰ TIMEOUT 5s! Firestore non risponde - possibile problema Security Rules');
+                    reject(new Error('Timeout Firestore'));
+                }, 5000);
+            });
             
+            console.log('🔄 Esecuzione query get()...');
+            
+            // Add .catch to query itself
+            const queryPromise = docRef.get().then(doc => {
+                clearTimeout(timeoutId);
+                console.log('📥 Query completata!');
+                return doc;
+            }).catch(err => {
+                clearTimeout(timeoutId);
+                console.error('❌ Errore nella query:', err.code, err.message);
+                throw err;
+            });
+            
+            console.log('⏳ In attesa risposta...');
             const doc = await Promise.race([queryPromise, timeoutPromise]);
             
+            console.log('📥 Risposta ricevuta, exists:', doc.exists);
+            
             if (doc.exists) {
-                console.log('✅ Profilo trovato per:', uid);
-                return { id: doc.id, ...doc.data() };
+                const data = doc.data();
+                console.log('✅ Profilo trovato per:', uid, '- Nome:', data.name || 'N/A');
+                return { id: doc.id, ...data };
             }
-            console.log('⚠️ Profilo non esiste per:', uid);
+            console.log('⚠️ Profilo non esiste per UID:', uid);
+            console.log('📝 Creerò un profilo di default...');
             return null;
         } catch (error) {
-            console.error('❌ Errore lettura profilo:', error);
+            console.error('❌ Errore lettura profilo:', error.message);
+            // If timeout or permission error, return null so we can create profile
             return null;
         }
     },
