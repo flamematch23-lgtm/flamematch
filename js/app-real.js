@@ -24,7 +24,72 @@ window.bypassInterval = setInterval(function() {
             document.body.style.overflow = 'auto';
         }
         
-        alert('Timeout! Caricamento forzato.');
+        // Create minimal default profile
+        window.currentUserProfile = {
+            uid: 'temp_user',
+            name: 'Utente',
+            email: '',
+            age: 25,
+            gender: 'other',
+            bio: '',
+            photos: [],
+            location: { lat: 41.9, lng: 12.5 },
+            flameCoins: 50,
+            premium: { plan: 'free' }
+        };
+        
+        console.log('✅ Profilo di emergenza creato');
+        
+        // Initialize app UI manually
+        console.log('🚀 Inizializzazione manuale app...');
+        
+        try {
+            // Update UI with emergency profile
+            if (typeof updateUserUI === 'function') {
+                updateUserUI();
+                console.log('✅ UI aggiornata');
+            }
+            
+            // Initialize drag listeners for swipe
+            if (typeof initDragListeners === 'function') {
+                initDragListeners();
+                console.log('✅ Drag listeners attivati');
+            }
+            
+            // Update swipe counter
+            if (typeof updateSwipeCounter === 'function') {
+                updateSwipeCounter();
+            }
+            
+            // Try to load profiles (might fail due to Firestore)
+            if (typeof loadRealProfiles === 'function') {
+                loadRealProfiles().catch(e => console.warn('⚠️ Impossibile caricare profili:', e));
+            }
+            
+            // Show main content
+            document.querySelectorAll('.app-content, .main-content, main, #mainContent').forEach(el => {
+                el.style.opacity = '1';
+                el.style.visibility = 'visible';
+                el.style.display = '';
+            });
+            
+            // Show home section
+            document.querySelectorAll('.section, [data-section]').forEach(s => s.classList.remove('active'));
+            const homeSection = document.querySelector('#homeSection, [data-section="home"], .home-section');
+            if (homeSection) {
+                homeSection.classList.add('active');
+                homeSection.style.display = 'block';
+            }
+            
+            console.log('✅ App inizializzata in modalità emergenza');
+        } catch(e) {
+            console.error('❌ Errore init bypass:', e);
+        }
+        
+        // Show warning to user
+        setTimeout(function() {
+            alert('Caricamento completato in modalità ridotta.\n\nAlcune funzionalità potrebbero non essere disponibili.\n\nSe il problema persiste, prova a:\n1. Pulire la cache del browser\n2. Ricarica la pagina\n3. Usa una finestra in incognito');
+        }, 500);
     }
 }, 1000);
 
