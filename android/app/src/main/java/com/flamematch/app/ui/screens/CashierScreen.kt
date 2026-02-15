@@ -50,8 +50,14 @@ fun CashierScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Button(onClick = { onDeposit(100) }) { Text("Deposit +100") }
-            Button(onClick = { onWithdraw(100) }) { Text("Withdraw -100") }
+            Button(onClick = { onDeposit(100) }) { Text("Buy-in +100") }
+            Button(onClick = { onWithdraw(100) }) { Text("Cash-out -100") }
         }
+
+        Spacer(modifier = Modifier.height(20.dp))
+        Text(
+            "Demo tecnica: per soldi veri servono licenza ADM/AAMS, KYC e AML lato server-authoritative.",
+            color = Color.Yellow
+        )
     }
 }

@@ -22,6 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.flamematch.app.data.TableSummary
+import com.flamematch.app.poker.engine.TableState
 import com.flamematch.app.ui.theme.CardBackground
 import com.flamematch.app.ui.theme.DarkBackground
 
@@ -29,6 +30,10 @@ import com.flamematch.app.ui.theme.DarkBackground
 fun TableScreen(
     table: TableSummary?,
     chipsOnTable: Int,
+    tableState: TableState?,
+    legalActions: Set<String>,
+    errorMessage: String?,
+    onAction: (String) -> Unit,
     onNavigateBack: () -> Unit
 ) {
     Column(
@@ -49,19 +54,44 @@ fun TableScreen(
             shape = RoundedCornerShape(18.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("Round: ${tableState?.bettingRound ?: "-"}", color = Color.LightGray)
+                Text("Player to act: ${tableState?.currentPlayerId ?: "-"}", color = Color.LightGray)
                 Text("Board", color = Color.LightGray)
-                Text("A♠ K♣ 9♦ | 4♥ | 2♠", color = Color.White, fontSize = 20.sp)
+                Text(
+                    tableState?.communityCards?.joinToString(" ") { "${it.rank.name.first()}${it.suit.name.first()}" }.orEmpty()
+                        .ifBlank { "(in attesa del flop)" },
+                    color = Color.White,
+                    fontSize = 20.sp
+                )
                 Text("Hole cards", color = Color.LightGray)
-                Text("Q♠ Q♥", color = Color.White, fontSize = 20.sp)
+                Text(
+                    tableState?.players?.firstOrNull { it.playerId == "demo-user" }?.holeCards
+                        ?.joinToString(" ") { "${it.rank.name.first()}${it.suit.name.first()}" }
+                        .orEmpty(),
+                    color = Color.White,
+                    fontSize = 20.sp
+                )
+                if (errorMessage != null) {
+                    Text(errorMessage, color = Color.Red)
+                }
             }
         }
 
         Spacer(modifier = Modifier.height(20.dp))
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Button(onClick = { }) { Text("Fold") }
-            Button(onClick = { }) { Text("Call") }
-            Button(onClick = { }) { Text("Raise") }
+            ActionButton("fold", legalActions, onAction)
+            ActionButton("check", legalActions, onAction)
+            ActionButton("call", legalActions, onAction)
+            ActionButton("raise", legalActions, onAction)
+            ActionButton("all-in", legalActions, onAction)
         }
+    }
+}
+
+@Composable
+private fun ActionButton(action: String, legalActions: Set<String>, onAction: (String) -> Unit) {
+    Button(onClick = { onAction(action) }, enabled = action in legalActions) {
+        Text(action.uppercase())
     }
 }
