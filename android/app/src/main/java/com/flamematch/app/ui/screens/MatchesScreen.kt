@@ -33,6 +33,7 @@ import com.flamematch.app.ui.theme.CardBackground
 
 data class Match(val id: String, val name: String, val emoji: String, val lastMessage: String)
 
+@Deprecated("Legacy social screen: migration in progress to poker flows")
 @Composable
 fun MatchesScreen(
     onNavigateBack: () -> Unit,

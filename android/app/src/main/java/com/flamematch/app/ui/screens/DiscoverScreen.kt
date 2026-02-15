@@ -36,6 +36,7 @@ import com.flamematch.app.ui.theme.CardBackground
 
 data class Profile(val name: String, val age: Int, val bio: String, val emoji: String)
 
+@Deprecated("Legacy social screen: migration in progress to poker flows")
 @Composable
 fun DiscoverScreen(onNavigateBack: () -> Unit) {
     val profiles = listOf(
