@@ -47,6 +47,7 @@ data class LikeProfile(
     val isNew: Boolean = false
 )
 
+@Deprecated("Legacy social screen: migration in progress to poker flows")
 @Composable
 fun LikesScreen(
     onNavigateBack: () -> Unit,

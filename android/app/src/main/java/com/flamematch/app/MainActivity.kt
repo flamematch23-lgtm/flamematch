@@ -11,7 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
 import com.flamematch.app.navigation.NavGraph
-import com.flamematch.app.viewmodel.AuthViewModel
+import com.flamematch.app.viewmodel.PokerSessionViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -23,8 +23,8 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     val navController = rememberNavController()
-                    val viewModel: AuthViewModel = viewModel()
-                    NavGraph(navController = navController, viewModel = viewModel)
+                    val pokerSessionViewModel: PokerSessionViewModel = viewModel()
+                    NavGraph(navController = navController, viewModel = pokerSessionViewModel)
                 }
             }
         }

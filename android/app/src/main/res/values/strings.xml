@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">FlameMatch</string>
+    <string name="app_name">FlameMatch Poker</string>
+    <string name="lobby_title">Poker Lobby</string>
+    <string name="table_title">Table</string>
+    <string name="cashier_title">Cashier</string>
+    <string name="history_title">Hand History</string>
 </resources>
