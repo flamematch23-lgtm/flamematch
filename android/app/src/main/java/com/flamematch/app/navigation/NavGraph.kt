@@ -1,6 +1,7 @@
 package com.flamematch.app.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -37,6 +38,7 @@ fun NavGraph(navController: NavHostController) {
     val wallet by cashierViewModel.wallet.collectAsState()
     val hands by cashierViewModel.handHistory.collectAsState()
     val stats by cashierViewModel.userStats.collectAsState()
+    val tableUi by tableViewModel.uiState.collectAsState()
 
     NavHost(navController = navController, startDestination = Screen.Lobby.route) {
         composable(Screen.Lobby.route) {
@@ -56,9 +58,16 @@ fun NavGraph(navController: NavHostController) {
             arguments = listOf(navArgument("tableId") { defaultValue = "" })
         ) { backStackEntry ->
             val tableId = backStackEntry.arguments?.getString("tableId").orEmpty()
+            LaunchedEffect(tableId) {
+                tableViewModel.loadTable(tableId)
+            }
             TableScreen(
                 table = tableViewModel.tableById(tableId),
                 chipsOnTable = wallet.chipsOnTable,
+                tableState = tableUi.tableState,
+                legalActions = tableUi.legalActions,
+                errorMessage = tableUi.errorMessage,
+                onAction = tableViewModel::perform,
                 onNavigateBack = { navController.popBackStack() }
             )
         }
