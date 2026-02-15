@@ -21,26 +21,20 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.flamematch.app.data.WalletAccount
 import com.flamematch.app.ui.theme.CardBackground
 import com.flamematch.app.ui.theme.DarkBackground
-import com.flamematch.app.viewmodel.PokerPlayer
 
 @Composable
 fun CashierScreen(
-    player: PokerPlayer,
+    wallet: WalletAccount,
     onDeposit: (Int) -> Unit,
     onWithdraw: (Int) -> Unit,
     onNavigateBack: () -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(DarkBackground)
-            .padding(16.dp)
-    ) {
+    Column(modifier = Modifier.fillMaxSize().background(DarkBackground).padding(16.dp)) {
         TextButton(onClick = onNavigateBack) { Text("← Lobby") }
         Text("Cashier", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-
         Spacer(modifier = Modifier.height(16.dp))
 
         Card(
@@ -49,13 +43,12 @@ fun CashierScreen(
             shape = RoundedCornerShape(14.dp)
         ) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("Bankroll: ${player.bankroll} chips", color = Color.White)
-                Text("Al tavolo: ${player.chipsOnTable} chips", color = Color.LightGray)
+                Text("Bankroll: ${wallet.balance} chips", color = Color.White)
+                Text("Al tavolo: ${wallet.chipsOnTable} chips", color = Color.LightGray)
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
-
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Button(onClick = { onDeposit(100) }) { Text("Deposit +100") }
             Button(onClick = { onWithdraw(100) }) { Text("Withdraw -100") }

@@ -21,12 +21,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.flamematch.app.data.TableSummary
 import com.flamematch.app.ui.theme.CardBackground
 import com.flamematch.app.ui.theme.DarkBackground
 
 @Composable
 fun TableScreen(
-    selectedStake: String,
+    table: TableSummary?,
     chipsOnTable: Int,
     onNavigateBack: () -> Unit
 ) {
@@ -37,7 +38,8 @@ fun TableScreen(
             .padding(16.dp)
     ) {
         TextButton(onClick = onNavigateBack) { Text("← Lobby") }
-        Text("Table - $selectedStake", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        Text("Table - ${table?.stakes ?: "N/A"}", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        Text("${table?.name ?: "Unknown table"}", color = Color.Gray)
         Text("Stack attuale: $chipsOnTable chips", color = Color.Gray)
 
         Spacer(modifier = Modifier.height(20.dp))
@@ -56,7 +58,6 @@ fun TableScreen(
         }
 
         Spacer(modifier = Modifier.height(20.dp))
-
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Button(onClick = { }) { Text("Fold") }
             Button(onClick = { }) { Text("Call") }
