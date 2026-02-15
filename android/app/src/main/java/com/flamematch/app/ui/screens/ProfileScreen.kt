@@ -23,28 +23,20 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.flamematch.app.data.PokerUser
+import com.flamematch.app.data.WalletAccount
 import com.flamematch.app.ui.theme.CardBackground
 import com.flamematch.app.ui.theme.DarkBackground
-import com.flamematch.app.viewmodel.PokerPlayer
 
 @Composable
-fun ProfileScreen(
-    player: PokerPlayer,
-    onNavigateBack: () -> Unit
-) {
-    var nickname by remember { mutableStateOf(player.nickname) }
+fun ProfileScreen(user: PokerUser, wallet: WalletAccount, onNavigateBack: () -> Unit) {
+    var nickname by remember { mutableStateOf(user.nickname) }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(DarkBackground)
-            .padding(16.dp)
-    ) {
+    Column(modifier = Modifier.fillMaxSize().background(DarkBackground).padding(16.dp)) {
         TextButton(onClick = onNavigateBack) { Text("← Lobby") }
         Text("Profile", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
 
         Spacer(modifier = Modifier.height(16.dp))
-
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = CardBackground),
@@ -52,14 +44,15 @@ fun ProfileScreen(
         ) {
             Column(Modifier.padding(16.dp)) {
                 Text("Nickname", color = Color.Gray)
-                OutlinedTextField(
-                    value = nickname,
-                    onValueChange = { nickname = it },
-                    modifier = Modifier.fillMaxWidth()
-                )
+                OutlinedTextField(value = nickname, onValueChange = { nickname = it }, modifier = Modifier.fillMaxWidth())
                 Spacer(modifier = Modifier.height(12.dp))
-                Text("Bankroll: ${player.bankroll} chips", color = Color.White)
-                Text("Chips in gioco: ${player.chipsOnTable}", color = Color.LightGray)
+                Text("Bankroll: ${wallet.balance} chips", color = Color.White)
+                Text("Chips in gioco: ${wallet.chipsOnTable}", color = Color.LightGray)
+                Spacer(modifier = Modifier.height(12.dp))
+                Text("Hands giocate: ${user.totalHands}", color = Color.White)
+                Text("Hands vinte: ${user.handsWon}", color = Color.LightGray)
+                Text("Winrate: ${"%.1f".format(user.winRate)}%", color = Color.LightGray)
+                Text("Net chips: ${user.netChips}", color = Color.LightGray)
             }
         }
     }

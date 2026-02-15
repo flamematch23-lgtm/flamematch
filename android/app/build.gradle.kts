@@ -44,6 +44,7 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.7.2")
     implementation("androidx.navigation:navigation-compose:2.7.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
     
     implementation(platform("com.google.firebase:firebase-bom:32.2.0"))
     implementation("com.google.firebase:firebase-auth-ktx")

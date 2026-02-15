@@ -24,31 +24,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.flamematch.app.data.TableSummary
 import com.flamematch.app.ui.theme.CardBackground
 import com.flamematch.app.ui.theme.DarkBackground
-
-data class PokerTable(
-    val name: String,
-    val format: String,
-    val stakes: String,
-    val players: String
-)
 
 @Composable
 fun LobbyScreen(
     selectedStake: String,
+    tables: List<TableSummary>,
     onSelectStake: (String) -> Unit,
-    onNavigateToTable: () -> Unit,
+    onNavigateToTable: (TableSummary) -> Unit,
     onNavigateToCashier: () -> Unit,
     onNavigateToHistory: () -> Unit,
     onNavigateToProfile: () -> Unit
 ) {
     val stakes = listOf("€0.5/€1", "€1/€2", "€2/€5")
-    val tables = listOf(
-        PokerTable("Torino Turbo", "6-Max NLH", "€1/€2", "4/6"),
-        PokerTable("Milano Deep", "9-Max NLH", "€2/€5", "7/9"),
-        PokerTable("Roma Sprint", "HU SNG", "€0.5/€1", "1/2")
-    ).filter { it.stakes == selectedStake }
+    val filtered = tables.filter { it.stakes == selectedStake }
 
     Column(
         modifier = Modifier
@@ -58,16 +49,11 @@ fun LobbyScreen(
     ) {
         Text("Poker Lobby", style = MaterialTheme.typography.headlineSmall, color = Color.White)
         Text("Seleziona stake e formato del tavolo", color = Color.Gray)
-
         Spacer(modifier = Modifier.height(12.dp))
 
         Row {
             stakes.forEach { stake ->
-                FilterChip(
-                    selected = selectedStake == stake,
-                    onClick = { onSelectStake(stake) },
-                    label = { Text(stake) }
-                )
+                FilterChip(selected = selectedStake == stake, onClick = { onSelectStake(stake) }, label = { Text(stake) })
                 Spacer(modifier = Modifier.width(8.dp))
             }
         }
@@ -75,7 +61,7 @@ fun LobbyScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.weight(1f)) {
-            items(tables) { table ->
+            items(filtered) { table ->
                 Card(
                     colors = CardDefaults.cardColors(containerColor = CardBackground),
                     shape = RoundedCornerShape(14.dp),
@@ -84,11 +70,9 @@ fun LobbyScreen(
                     Column(Modifier.padding(14.dp)) {
                         Text(table.name, color = Color.White, fontWeight = FontWeight.Bold)
                         Text("${table.format} • ${table.stakes}", color = Color.LightGray)
-                        Text("Posti: ${table.players}", color = Color.Gray)
+                        Text("Posti: ${table.occupiedSeats}/${table.seats}", color = Color.Gray)
                         Spacer(modifier = Modifier.height(8.dp))
-                        Button(onClick = onNavigateToTable) {
-                            Text("Apri Tavolo")
-                        }
+                        Button(onClick = { onNavigateToTable(table) }) { Text("Apri Tavolo") }
                     }
                 }
             }
