@@ -103,11 +103,11 @@ window.cancelEmergencyBypass = function() {
    ========================================== */
 
 // Default placeholder images (URL-encoded SVG)
-const DEFAULT_AVATAR_200 = "data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27200%27 height=%27200%27%3E%3Crect fill=%27%23667%27 width=%27200%27 height=%27200%27/%3E%3Ctext fill=%27%23fff%27 font-size=%2780%27 x=%2750%25%27 y=%2755%25%27 text-anchor=%27middle%27%3E?%3C/text%3E%3C/svg%3E";
-const DEFAULT_AVATAR_50 = "data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2750%27 height=%2750%27%3E%3Crect fill=%27%23667%27 width=%2750%27 height=%2750%27/%3E%3Ctext fill=%27%23fff%27 font-size=%2720%27 x=%2750%25%27 y=%2755%25%27 text-anchor=%27middle%27%3E?%3C/text%3E%3C/svg%3E";
-const DEFAULT_AVATAR_60 = "data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2760%27 height=%2760%27%3E%3Crect fill=%27%23667%27 width=%2760%27 height=%2760%27/%3E%3Ctext fill=%27%23fff%27 font-size=%2724%27 x=%2750%25%27 y=%2755%25%27 text-anchor=%27middle%27%3E?%3C/text%3E%3C/svg%3E";
-const DEFAULT_AVATAR_40 = "data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2740%27 height=%2740%27%3E%3Crect fill=%27%23667%27 width=%2740%27 height=%2740%27/%3E%3Ctext fill=%27%23fff%27 font-size=%2716%27 x=%2750%25%27 y=%2755%25%27 text-anchor=%27middle%27%3E?%3C/text%3E%3C/svg%3E";
-const DEFAULT_AVATAR_120 = "data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27120%27 height=%27120%27%3E%3Crect fill=%27%23667%27 width=%27120%27 height=%27120%27/%3E%3Ctext fill=%27%23fff%27 font-size=%2748%27 x=%2750%25%27 y=%2755%25%27 text-anchor=%27middle%27%3E?%3C/text%3E%3C/svg%3E";
+var DEFAULT_AVATAR_200 = "data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27200%27 height=%27200%27%3E%3Crect fill=%27%23667%27 width=%27200%27 height=%27200%27/%3E%3Ctext fill=%27%23fff%27 font-size=%2780%27 x=%2750%25%27 y=%2755%25%27 text-anchor=%27middle%27%3E?%3C/text%3E%3C/svg%3E";
+var DEFAULT_AVATAR_50 = "data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2750%27 height=%2750%27%3E%3Crect fill=%27%23667%27 width=%2750%27 height=%2750%27/%3E%3Ctext fill=%27%23fff%27 font-size=%2720%27 x=%2750%25%27 y=%2755%25%27 text-anchor=%27middle%27%3E?%3C/text%3E%3C/svg%3E";
+var DEFAULT_AVATAR_60 = "data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2760%27 height=%2760%27%3E%3Crect fill=%27%23667%27 width=%2760%27 height=%2760%27/%3E%3Ctext fill=%27%23fff%27 font-size=%2724%27 x=%2750%25%27 y=%2755%25%27 text-anchor=%27middle%27%3E?%3C/text%3E%3C/svg%3E";
+var DEFAULT_AVATAR_40 = "data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2740%27 height=%2740%27%3E%3Crect fill=%27%23667%27 width=%2740%27 height=%2740%27/%3E%3Ctext fill=%27%23fff%27 font-size=%2716%27 x=%2750%25%27 y=%2755%25%27 text-anchor=%27middle%27%3E?%3C/text%3E%3C/svg%3E";
+var DEFAULT_AVATAR_120 = "data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27120%27 height=%27120%27%3E%3Crect fill=%27%23667%27 width=%27120%27 height=%27120%27/%3E%3Ctext fill=%27%23fff%27 font-size=%2748%27 x=%2750%25%27 y=%2755%25%27 text-anchor=%27middle%27%3E?%3C/text%3E%3C/svg%3E";
 
 // State
 let currentUser = null;
@@ -393,7 +393,7 @@ function checkAuth() {
             // Aggiorna ogni 5 minuti
             setInterval(updateLastActive, 5 * 60 * 1000);
             
-            console.log('🎉 Caricamento completato con successo!'); if (typeof clearBypass === 'function') clearBypass();
+            console.log('🎉 Caricamento completato con successo!'); if (typeof clearBypass === 'function') clearBypass(); window.cancelEmergencyBypass();
             
             // Cancella safety timeout
             if (window.safetyTimeoutId) {
@@ -1477,8 +1477,8 @@ function showLikesModal(likes) {
                                 <img src="${user.photos?.[0] || DEFAULT_AVATAR_200}" 
                                     style="width: 100%; height: 150px; object-fit: cover;">
                                 <div style="position: absolute; bottom: 0; left: 0; right: 0; padding: 12px; background: linear-gradient(transparent, rgba(0,0,0,0.8));">
-                                    <div style="font-weight: bold;">${user.name}, ${user.age || '?'}</div>
-                                    <div style="font-size: 12px; color: #aaa;">${user.city || 'Vicino a te'}</div>
+                                    <div style="font-weight: bold;">${escapeHtml(user.name || '')}, ${user.age || '?'}</div>
+                                    <div style="font-size: 12px; color: #aaa;">${escapeHtml(user.city || 'Vicino a te')}</div>
                                 </div>
                             </div>
                             <div style="padding: 12px; display: flex; justify-content: space-between;">
@@ -1772,7 +1772,7 @@ function showVisitorsModal(visitors) {
                             <img src="${user.photos?.[0] || DEFAULT_AVATAR_50}" 
                                 style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">
                             <div style="flex: 1;">
-                                <div style="font-weight: bold;">${user.name}, ${user.age || '?'}</div>
+                                <div style="font-weight: bold;">${escapeHtml(user.name || '')}, ${user.age || '?'}</div>
                                 <div style="font-size: 12px; color: #888;">
                                     ${user.visitedAt ? formatTimeAgo(user.visitedAt) : 'Recentemente'}
                                 </div>
@@ -1893,9 +1893,9 @@ function updateMatchesPanel(matches) {
             newMatchesContainer.innerHTML = matches.slice(0, 8).map(match => `
                 <div class="new-match-item" onclick="openChat('${match.user.id}', '${match.matchId}')">
                     <div class="new-match-avatar">
-                        <img src="${match.user.photos?.[0] || DEFAULT_AVATAR_60}" alt="${match.user.name}">
+                        <img src="${match.user.photos?.[0] || DEFAULT_AVATAR_60}" alt="${escapeHtml(match.user.name || '')}">
                     </div>
-                    <span>${match.user.name?.split(' ')[0] || 'Match'}</span>
+                    <span>${escapeHtml(match.user.name?.split(' ')[0] || 'Match')}</span>
                 </div>
             `).join('');
         }
@@ -1915,13 +1915,13 @@ function updateMatchesPanel(matches) {
         } else {
             chatsContainer.innerHTML = matchesWithMessages.map(match => `
                 <div class="chat-item" onclick="openChat('${match.user.id}', '${match.matchId}')">
-                    <img src="${match.user.photos?.[0] || DEFAULT_AVATAR_50}" alt="${match.user.name}" class="chat-avatar">
+                    <img src="${match.user.photos?.[0] || DEFAULT_AVATAR_50}" alt="${escapeHtml(match.user.name || '')}" class="chat-avatar">
                     <div class="chat-info">
                         <div class="chat-name">
-                            ${match.user.name?.split(' ')[0] || 'Match'}
+                            ${escapeHtml(match.user.name?.split(' ')[0] || 'Match')}
                             <span class="chat-time">${formatTime(match.lastMessageTime)}</span>
                         </div>
-                        <p class="chat-preview">${match.lastMessage || ''}</p>
+                        <p class="chat-preview">${escapeHtml(match.lastMessage || '')}</p>
                     </div>
                 </div>
             `).join('');
@@ -2018,22 +2018,22 @@ function renderCards() {
         ` : '';
         
         card.innerHTML = `
-            <img src="${photoUrl}" alt="${profile.name}" draggable="false" onerror="this.src=DEFAULT_AVATAR_40">
+            <img src="${photoUrl}" alt="${escapeHtml(profile.name || '')}" draggable="false" onerror="this.src=DEFAULT_AVATAR_40">
             <div class="card-gradient"></div>
             ${voiceVibeHtml}
             <div class="card-info">
                 <h2 class="card-name">
-                    ${profile.name || 'Utente'}${age ? ', ' + age : ''}
+                    ${escapeHtml(profile.name || 'Utente')}${age ? ', ' + age : ''}
                     ${profile.isVerified ? '<i class="fas fa-check-circle verified-badge"></i>' : ''}
                 </h2>
                 <div class="card-details">
-                    ${profile.city ? `<span><i class="fas fa-map-marker-alt"></i> ${profile.city}</span>` : ''}
-                    ${profile.job ? `<span><i class="fas fa-briefcase"></i> ${profile.job}</span>` : ''}
+                    ${profile.city ? `<span><i class="fas fa-map-marker-alt"></i> ${escapeHtml(profile.city)}</span>` : ''}
+                    ${profile.job ? `<span><i class="fas fa-briefcase"></i> ${escapeHtml(profile.job)}</span>` : ''}
                 </div>
-                <p class="card-bio">${profile.bio || 'Nessuna bio disponibile'}</p>
+                <p class="card-bio">${escapeHtml(profile.bio || 'Nessuna bio disponibile')}</p>
                 ${tags.length > 0 ? `
                     <div class="card-tags">
-                        ${tags.slice(0, 4).map(tag => `<span class="card-tag">${tag}</span>`).join('')}
+                        ${tags.slice(0, 4).map(tag => `<span class="card-tag">${escapeHtml(tag)}</span>`).join('')}
                     </div>
                 ` : ''}
             </div>
@@ -2334,7 +2334,7 @@ function showProfileDetails(profile) {
     const displayAge = profile.privacySettings?.hideAge ? '' : age;
     
     document.getElementById('profileModalName').innerHTML = `
-        ${profile.name || 'Utente'}${displayAge ? ', ' + displayAge : ''}
+        ${escapeHtml(profile.name || 'Utente')}${displayAge ? ', ' + displayAge : ''}
         ${profile.isVerified ? '<i class="fas fa-check-circle verified-badge"></i>' : ''}
     `;
     document.getElementById('profileModalBio').textContent = profile.bio || 'Nessuna bio disponibile';
@@ -2403,7 +2403,7 @@ async function showProfileModal() {
         // Popola nome, età e verifica
         const age = profile.birthDate ? calculateAge(profile.birthDate) : '';
         const verifiedBadge = profile.isVerified ? '<i class="fas fa-check-circle verified-badge"></i>' : '';
-        document.getElementById('profileModalName').innerHTML = `${profile.name || 'Utente'}${age ? ', ' + age : ''} ${verifiedBadge}`;
+        document.getElementById('profileModalName').innerHTML = `${escapeHtml(profile.name || 'Utente')}${age ? ', ' + age : ''} ${verifiedBadge}`;
         
         // Popola dettagli (distanza e lavoro)
         const detailsEl = modal.querySelector('.profile-modal-details');
@@ -2423,7 +2423,7 @@ async function showProfileModal() {
             
             // Lavoro
             if (profile.work) {
-                detailsHTML += `<span><i class="fas fa-briefcase"></i> ${profile.work}</span>`;
+                detailsHTML += `<span><i class="fas fa-briefcase"></i> ${escapeHtml(profile.work)}</span>`;
             }
             
             detailsEl.innerHTML = detailsHTML || '<span><i class="fas fa-user"></i> FlameMatch User</span>';
@@ -2444,7 +2444,7 @@ async function showProfileModal() {
             
             interestsEl.innerHTML = profile.interests.map(interest => {
                 const emoji = interestEmojis[interest] || '❤️';
-                return `<span class="interest-tag">${emoji} ${interest}</span>`;
+                return `<span class="interest-tag">${emoji} ${escapeHtml(interest)}</span>`;
             }).join('');
         } else if (interestsEl) {
             interestsEl.innerHTML = '<span class="interest-tag">❤️ FlameMatch</span>';
@@ -3480,8 +3480,8 @@ async function loadFeed() {
                             <img src="${author.photoURL || author.photos?.[0] || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(author.name || 'U')}" 
                                  style="width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 2px solid #ff6b6b;">
                         </div>
-                        <div style="flex: 1;" onclick="viewMatchProfile('${post.userId}')" style="cursor: pointer;">
-                            <h4 style="margin: 0; color: var(--text-primary); font-size: 0.95em;">${author.name || 'Utente'}</h4>
+                        <div style="flex: 1; cursor: pointer;" onclick="viewMatchProfile('${post.userId}')">
+                            <h4 style="margin: 0; color: var(--text-primary); font-size: 0.95em;">${escapeHtml(author.name || 'Utente')}</h4>
                             <span style="color: var(--text-secondary); font-size: 0.8em;">${timeAgo}</span>
                         </div>
                         <span style="background: linear-gradient(135deg, #ff6b6b, #ff8e53); color: white; padding: 4px 10px; border-radius: 12px; font-size: 0.7em; font-weight: 600;">
@@ -3490,7 +3490,7 @@ async function loadFeed() {
                     </div>
                     
                     <!-- Caption -->
-                    ${post.caption ? `<p style="padding: 0 15px 10px; margin: 0; color: var(--text-primary); font-size: 0.95em;">${post.caption}</p>` : ''}
+                    ${post.caption ? `<p style="padding: 0 15px 10px; margin: 0; color: var(--text-primary); font-size: 0.95em;">${escapeHtml(post.caption)}</p>` : ''}
                     
                     <!-- Media -->
                     ${post.mediaUrl ? `
@@ -5054,8 +5054,8 @@ function renderBlockedUsers() {
     
     return userPrivacySettings.blockedUsers.map(user => `
         <div class="blocked-user">
-            <img src="${user.photo || 'https://ui-avatars.com/api/?name=' + user.name}" alt="${user.name}">
-            <span>${user.name}</span>
+            <img src="${user.photo || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(user.name || '')}" alt="${escapeHtml(user.name || '')}">
+            <span>${escapeHtml(user.name || '')}</span>
             <button onclick="unblockUser('${user.id}')" class="unblock-btn">Sblocca</button>
         </div>
     `).join('');
@@ -5934,18 +5934,18 @@ async function openUserProfile(userId) {
                     ` : avatarContent}
                     
                     <h2 style="color: white; margin: 15px 0 5px; display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px;">
-                        ${user.name || 'Utente'}${age ? ', ' + age : ''} 
+                        ${escapeHtml(user.name || 'Utente')}${age ? ', ' + age : ''} 
                         ${verifiedBadge}
                         ${premiumBadge}
                     </h2>
                     
-                    ${user.bio ? `<p style="color: rgba(255,255,255,0.9); margin: 10px 0; font-size: 1em;">"${user.bio}"</p>` : 
+                    ${user.bio ? `<p style="color: rgba(255,255,255,0.9); margin: 10px 0; font-size: 1em;">"${escapeHtml(user.bio)}"</p>` : 
                       isOwnProfile ? `<p style="color: rgba(255,255,255,0.6); margin: 10px 0; font-style: italic; font-size: 0.9em;">Aggiungi una bio per farti conoscere meglio</p>` : ''}
                     
                     ${user.location ? 
                       (isOwnProfile ? 
-                        `<p onclick="setMyLocation()" style="color: rgba(255,255,255,0.8); font-size: 0.9em; margin: 5px 0; cursor: pointer; transition: all 0.3s;" onmouseover="this.style.color='#ff6b6b'" onmouseout="this.style.color='rgba(255,255,255,0.8)'"><i class="fas fa-map-marker-alt"></i> ${user.location} <i class="fas fa-edit" style="font-size: 0.75em; margin-left: 5px; opacity: 0.6;"></i></p>` :
-                        `<p style="color: rgba(255,255,255,0.8); font-size: 0.9em; margin: 5px 0;"><i class="fas fa-map-marker-alt"></i> ${user.location}</p>`) : 
+                        `<p onclick="setMyLocation()" style="color: rgba(255,255,255,0.8); font-size: 0.9em; margin: 5px 0; cursor: pointer; transition: all 0.3s;" onmouseover="this.style.color='#ff6b6b'" onmouseout="this.style.color='rgba(255,255,255,0.8)'"><i class="fas fa-map-marker-alt"></i> ${escapeHtml(user.location)} <i class="fas fa-edit" style="font-size: 0.75em; margin-left: 5px; opacity: 0.6;"></i></p>` :
+                        `<p style="color: rgba(255,255,255,0.8); font-size: 0.9em; margin: 5px 0;"><i class="fas fa-map-marker-alt"></i> ${escapeHtml(user.location)}</p>`) : 
                       isOwnProfile ? `<p onclick="setMyLocation()" style="color: rgba(255,255,255,0.5); font-size: 0.85em; cursor: pointer; transition: all 0.3s;" onmouseover="this.style.color='#ff6b6b'" onmouseout="this.style.color='rgba(255,255,255,0.5)'"><i class="fas fa-map-marker-alt"></i> Posizione non impostata <i class="fas fa-edit" style="font-size: 0.8em; margin-left: 5px;"></i></p>` : ''}
                     
                     ${user.job ? `<p style="color: rgba(255,255,255,0.8); font-size: 0.9em; margin: 5px 0;"><i class="fas fa-briefcase"></i> ${user.job}</p>` : ''}
@@ -6432,7 +6432,7 @@ async function openPostDetail(postId, postData) {
                              style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; cursor: pointer;"
                              onclick="closePostDetailModal(); openUserProfile('${postData.userId}')">
                         <div style="flex: 1;">
-                            <strong style="cursor: pointer;" onclick="closePostDetailModal(); openUserProfile('${postData.userId}')">${author.name || 'Utente'}</strong>
+                            <strong style="cursor: pointer;" onclick="closePostDetailModal(); openUserProfile('${postData.userId}')">${escapeHtml(author.name || 'Utente')}</strong>
                             ${author.isVerified ? '<i class="fas fa-check-circle" style="color: var(--primary); font-size: 0.8em;"></i>' : ''}
                             <div style="font-size: 0.8em; color: var(--text-secondary);">${timeAgo}</div>
                         </div>
@@ -6446,7 +6446,7 @@ async function openPostDetail(postId, postData) {
                     <!-- Caption -->
                     ${postData.caption ? `
                         <div style="padding: 15px; border-bottom: 1px solid var(--border);">
-                            <p style="margin: 0;">${postData.caption}</p>
+                            <p style="margin: 0;">${escapeHtml(postData.caption)}</p>
                         </div>
                     ` : ''}
                     
@@ -6575,7 +6575,7 @@ async function loadPostComments(postId) {
                      onclick="closePostDetailModal(); openUserProfile('${comment.userId}')">
                 <div style="flex: 1;">
                     <div>
-                        <strong style="cursor: pointer;" onclick="closePostDetailModal(); openUserProfile('${comment.userId}')">${authorName}</strong>
+                        <strong style="cursor: pointer;" onclick="closePostDetailModal(); openUserProfile('${comment.userId}')">${escapeHtml(authorName)}</strong>
                         ${authorVerified ? '<i class="fas fa-check-circle" style="color: var(--primary); font-size: 0.7em;"></i>' : ''}
                         <span style="color: var(--text-secondary); font-size: 0.8em; margin-left: 5px;">${timeAgo}</span>
                         ${isOwnComment ? `<button onclick="deleteComment('${postId}', '${doc.id}')" style="background: none; border: none; color: #ff6b6b; cursor: pointer; font-size: 0.8em; margin-left: 5px;"><i class="fas fa-trash"></i></button>` : ''}
@@ -9115,7 +9115,7 @@ class VoiceMessages {
     async sendVoiceMessage(audioData, duration) {
         if (!window.currentChatUserId || !window.currentUser) return;
         
-        const chatId = [window.currentUser.odoringu, window.currentChatUserId].sort().join('_');
+        const chatId = [window.currentUser.uid, window.currentChatUserId].sort().join('_');
         
         try {
             await window.window.db.collection('chats').doc(chatId).collection('messages').add({
