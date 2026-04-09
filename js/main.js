@@ -95,15 +95,23 @@ let currentTestimonial = 0;
 // Initialization
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
+    // Reset redirect loop counter when user correctly lands on index.html
+    sessionStorage.removeItem('authRedirectCount');
+
+    // If we arrived here because a loop was detected, don't auto-redirect again
+    const loopDetected = new URLSearchParams(window.location.search).get('loop') === '1';
+
     // Controlla se utente è già loggato - redirect automatico
-    auth.onAuthStateChanged((user) => {
-        if (user) {
-            // Utente già loggato, redirect a app
-            console.log('👤 Utente già loggato, redirect a app.html');
-            window.location.href = 'app.html';
-            return;
-        }
-    });
+    if (!loopDetected) {
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                // Utente già loggato, redirect a app
+                console.log('👤 Utente già loggato, redirect a app.html');
+                window.location.href = 'app.html';
+                return;
+            }
+        });
+    }
     
     initHeroCards();
     initDemoCards();

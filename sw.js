@@ -1,7 +1,7 @@
 // FlameMatch Service Worker v1.0
-const CACHE_NAME = 'flamematch-v22';
-const STATIC_CACHE = 'flamematch-static-v22';
-const DYNAMIC_CACHE = 'flamematch-dynamic-v22';
+const CACHE_NAME = 'flamematch-v23';
+const STATIC_CACHE = 'flamematch-static-v23';
+const DYNAMIC_CACHE = 'flamematch-dynamic-v23';
 
 // Risorse da cachare subito
 const STATIC_ASSETS = [
