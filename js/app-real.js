@@ -1,30 +1,17 @@
-// 🚨 EMERGENCY BYPASS WITH COUNTDOWN
-console.log('⏱️ COUNTDOWN BYPASS STARTED');
-window.bypassCounter = 0;
+// Emergency bypass: se il caricamento supera 20s, sblocca la UI
 window.bypassCancelled = false;
 
-window.bypassInterval = setInterval(function() {
-    window.bypassCounter++;
-    console.log('⏱️ Countdown: ' + window.bypassCounter + ' / 10 secondi');
-    
-    if (window.bypassCancelled) {
-        clearInterval(window.bypassInterval);
-        console.log('✅ Countdown cancellato - caricamento OK');
-        return;
+window.emergencyBypassTimeout = setTimeout(function() {
+    if (window.bypassCancelled) return;
+    console.warn('🚨 BYPASS EMERGENZA attivato dopo 20s - sblocco UI');
+
+    var overlay = document.getElementById('loadingOverlay');
+    if (overlay) {
+        overlay.style.display = 'none';
+        document.body.style.overflow = 'auto';
     }
-    
-    if (window.bypassCounter >= 10) {
-        clearInterval(window.bypassInterval);
-        console.warn('🚨🚨🚨 BYPASS ATTIVATO dopo 10 secondi!');
-        
-        // Hide loading
-        var overlay = document.getElementById('loadingOverlay');
-        if (overlay && overlay.style.display !== 'none') {
-            overlay.style.display = 'none';
-            document.body.style.overflow = 'auto';
-        }
-        
-        // Create minimal default profile
+
+    if (!window.currentUserProfile) {
         window.currentUserProfile = {
             uid: 'temp_user',
             name: 'Utente',
@@ -37,64 +24,35 @@ window.bypassInterval = setInterval(function() {
             flameCoins: 50,
             premium: { plan: 'free' }
         };
-        
-        console.log('✅ Profilo di emergenza creato');
-        
-        // Initialize app UI manually
-        console.log('🚀 Inizializzazione manuale app...');
-        
-        try {
-            // Update UI with emergency profile
-            if (typeof updateUserUI === 'function') {
-                updateUserUI();
-                console.log('✅ UI aggiornata');
-            }
-            
-            // Initialize drag listeners for swipe
-            if (typeof initDragListeners === 'function') {
-                initDragListeners();
-                console.log('✅ Drag listeners attivati');
-            }
-            
-            // Update swipe counter
-            if (typeof updateSwipeCounter === 'function') {
-                updateSwipeCounter();
-            }
-            
-            // Try to load profiles (might fail due to Firestore)
-            if (typeof loadRealProfiles === 'function') {
-                loadRealProfiles().catch(e => console.warn('⚠️ Impossibile caricare profili:', e));
-            }
-            
-            // Show main content
-            document.querySelectorAll('.app-content, .main-content, main, #mainContent').forEach(el => {
-                el.style.opacity = '1';
-                el.style.visibility = 'visible';
-                el.style.display = '';
-            });
-            
-            // Show home section
-            document.querySelectorAll('.section, [data-section]').forEach(s => s.classList.remove('active'));
-            const homeSection = document.querySelector('#homeSection, [data-section="home"], .home-section');
-            if (homeSection) {
-                homeSection.classList.add('active');
-                homeSection.style.display = 'block';
-            }
-            
-            console.log('✅ App inizializzata in modalità emergenza');
-        } catch(e) {
-            console.error('❌ Errore init bypass:', e);
-        }
-        
-        // Show warning to user
-        setTimeout(function() {
-            alert('Caricamento completato in modalità ridotta.\n\nAlcune funzionalità potrebbero non essere disponibili.\n\nSe il problema persiste, prova a:\n1. Pulire la cache del browser\n2. Ricarica la pagina\n3. Usa una finestra in incognito');
-        }, 500);
     }
-}, 1000);
+
+    try {
+        if (typeof updateUserUI === 'function') updateUserUI();
+        if (typeof initDragListeners === 'function') initDragListeners();
+        if (typeof updateSwipeCounter === 'function') updateSwipeCounter();
+        if (typeof loadRealProfiles === 'function') {
+            loadRealProfiles().catch(e => console.warn('⚠️ Impossibile caricare profili:', e));
+        }
+        document.querySelectorAll('.app-content, .main-content, main, #mainContent').forEach(el => {
+            el.style.opacity = '1';
+            el.style.visibility = 'visible';
+            el.style.display = '';
+        });
+        document.querySelectorAll('.section, [data-section]').forEach(s => s.classList.remove('active'));
+        const homeSection = document.querySelector('#homeSection, [data-section="home"], .home-section');
+        if (homeSection) {
+            homeSection.classList.add('active');
+            homeSection.style.display = 'block';
+        }
+    } catch(e) {
+        console.error('❌ Errore init bypass:', e);
+    }
+}, 20000);
 
 window.cancelEmergencyBypass = function() {
     window.bypassCancelled = true;
+    clearTimeout(window.emergencyBypassTimeout);
+    console.log('✅ Bypass emergenza cancellato');
 };
 
 /* ==========================================
@@ -199,7 +157,7 @@ let userPremiumData = {
 // INITIALIZATION
 // ==========================================
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('🔥 FlameMatch App - Modalità REALE (v=63)');
+    console.log('🔥 FlameMatch App - Modalità REALE (v=77)');
     
     // Safety timeout - se il caricamento impiega troppo, nascondi loading
     const safetyTimeout = setTimeout(() => {
@@ -266,41 +224,20 @@ function waitForFirebase() {
 function checkAuth() {
     console.log('🔐 checkAuth() chiamato - in attesa di auth state...');
     
-    auth.onAuthStateChanged(async (user) => {
-        // 🚨 GLOBAL BYPASS: Force continue after 8 seconds no matter what
-        const bypassTimeout = setTimeout(() => {
-            console.warn('🚨 BYPASS ATTIVATO! Forzo caricamento dopo 8s');
-            const loadingOverlay = document.getElementById('loadingOverlay');
-            if (loadingOverlay && loadingOverlay.style.display !== 'none') {
-                loadingOverlay.style.display = 'none';
-                // Create minimal profile
-                if (window.firebase && firebase.auth().currentUser) {
-                    const u = firebase.auth().currentUser;
-                    window.currentUserProfile = {
-                        id: u.uid,
-                        email: u.email,
-                        name: u.displayName || 'Utente',
-                        photos: u.photoURL ? [u.photoURL] : [],
-                        age: 25,
-                        bio: '',
-                        city: '',
-                        isVerified: false,
-                        isPremium: false
-                    };
-                    console.log('✅ Profilo bypass creato:', window.currentUserProfile.name);
-                }
-            }
-        }, 8000);
-        
-        // Clear bypass if we succeed normally
-        const clearBypass = () => {
-            clearTimeout(bypassTimeout);
-            console.log('✅ Bypass cancellato - caricamento normale OK');
-        };
+    // Unsubscribe after first auth state to avoid repeated re-init on token refresh
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
+        unsubscribe();
 
-        console.log('🔄 Auth state changed:', user ? user.email : 'NO USER');
+        console.log('🔄 Auth state received:', user ? user.email : 'NO USER');
+
+        // Always cancel both bypass timers as soon as auth state is known
+        if (window.safetyTimeoutId) clearTimeout(window.safetyTimeoutId);
         
         if (user) {
+            // Cancel emergency bypass - normal loading is taking over
+            window.cancelEmergencyBypass();
+            // User is authenticated - reset the redirect loop counter
+            sessionStorage.removeItem('authRedirectCount');
             console.log('✅ Utente autenticato:', user.email);
             currentUser = user;
             
@@ -308,7 +245,7 @@ function checkAuth() {
                 // Carica profilo utente (con retry per race condition durante registrazione)
                 console.log('📥 Caricamento profilo utente...');
                 
-                // Prova a caricare il profilo (max 2 tentativi, 3s timeout ciascuno)
+                // Prova a caricare il profilo (max 2 tentativi)
                 let retries = 0;
                 const maxRetries = 2;
                 while (retries < maxRetries) {
@@ -316,10 +253,7 @@ function checkAuth() {
                     try {
                         currentUserProfile = await FlameUsers.getProfile(user.uid);
                         console.log("📄 Risposta:", currentUserProfile ? "PROFILO TROVATO ✅" : "NULL");
-                        if (currentUserProfile) {
-                            console.log('✅ Profilo caricato!'); clearBypass();
-                            break;
-                        }
+                        if (currentUserProfile) break;
                     } catch (e) {
                         console.log('⚠️ Errore getProfile:', e.message);
                     }
@@ -393,12 +327,7 @@ function checkAuth() {
             // Aggiorna ogni 5 minuti
             setInterval(updateLastActive, 5 * 60 * 1000);
             
-            console.log('🎉 Caricamento completato con successo!'); if (typeof clearBypass === 'function') clearBypass();
-            
-            // Cancella safety timeout
-            if (window.safetyTimeoutId) {
-                clearTimeout(window.safetyTimeoutId);
-            }
+            console.log('🎉 Caricamento completato con successo!');
             
             // Nascondi eventuali loading overlay
             const loadingOverlay = document.getElementById('loadingOverlay');
@@ -430,6 +359,19 @@ function checkAuth() {
             }
             
         } else {
+            // Prevent redirect loop: if we were just sent here from index.html,
+            // don't bounce straight back. Use sessionStorage to detect the loop.
+            const redirectCount = parseInt(sessionStorage.getItem('authRedirectCount') || '0');
+            if (redirectCount >= 2) {
+                console.error('🔄 Redirect loop rilevato! Blocco il redirect e mostro la pagina di login inline.');
+                sessionStorage.removeItem('authRedirectCount');
+                const loadingOverlay = document.getElementById('loadingOverlay');
+                if (loadingOverlay) loadingOverlay.style.display = 'none';
+                // Redirect definitivo a index.html con flag
+                window.location.replace('index.html?loop=1');
+                return;
+            }
+            sessionStorage.setItem('authRedirectCount', (redirectCount + 1).toString());
             console.log('❌ Utente non autenticato - redirect a login');
             window.location.href = 'index.html';
         }
@@ -4922,11 +4864,11 @@ let userPrivacySettings = {
 };
 
 async function loadPrivacySettings() {
-    const user = FlameAuth.currentUser;
+    const user = currentUser || FlameAuth.currentUser;
     if (!user) return;
     
     try {
-        const doc = await window.window.db.collection('users').doc(user.uid).get();
+        const doc = await window.db.collection('users').doc(user.uid).get();
         if (doc.exists && doc.data().privacySettings) {
             userPrivacySettings = { ...userPrivacySettings, ...doc.data().privacySettings };
         }
@@ -5604,11 +5546,11 @@ let boostActive = false;
 let boostEndTime = null;
 
 async function checkBoostStatus() {
-    const user = FlameAuth.currentUser;
+    const user = currentUser || FlameAuth.currentUser;
     if (!user) return;
     
     try {
-        const doc = await window.window.db.collection('users').doc(user.uid).get();
+        const doc = await window.db.collection('users').doc(user.uid).get();
         if (doc.exists && doc.data().boostEndTime) {
             const endTime = doc.data().boostEndTime.toDate();
             if (endTime > new Date()) {
