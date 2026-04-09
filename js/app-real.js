@@ -103,11 +103,17 @@ window.cancelEmergencyBypass = function() {
    ========================================== */
 
 // Default placeholder images (URL-encoded SVG)
-var DEFAULT_AVATAR_200 = "data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27200%27 height=%27200%27%3E%3Crect fill=%27%23667%27 width=%27200%27 height=%27200%27/%3E%3Ctext fill=%27%23fff%27 font-size=%2780%27 x=%2750%25%27 y=%2755%25%27 text-anchor=%27middle%27%3E?%3C/text%3E%3C/svg%3E";
-var DEFAULT_AVATAR_50 = "data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2750%27 height=%2750%27%3E%3Crect fill=%27%23667%27 width=%2750%27 height=%2750%27/%3E%3Ctext fill=%27%23fff%27 font-size=%2720%27 x=%2750%25%27 y=%2755%25%27 text-anchor=%27middle%27%3E?%3C/text%3E%3C/svg%3E";
-var DEFAULT_AVATAR_60 = "data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2760%27 height=%2760%27%3E%3Crect fill=%27%23667%27 width=%2760%27 height=%2760%27/%3E%3Ctext fill=%27%23fff%27 font-size=%2724%27 x=%2750%25%27 y=%2755%25%27 text-anchor=%27middle%27%3E?%3C/text%3E%3C/svg%3E";
-var DEFAULT_AVATAR_40 = "data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2740%27 height=%2740%27%3E%3Crect fill=%27%23667%27 width=%2740%27 height=%2740%27/%3E%3Ctext fill=%27%23fff%27 font-size=%2716%27 x=%2750%25%27 y=%2755%25%27 text-anchor=%27middle%27%3E?%3C/text%3E%3C/svg%3E";
-var DEFAULT_AVATAR_120 = "data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27120%27 height=%27120%27%3E%3Crect fill=%27%23667%27 width=%27120%27 height=%27120%27/%3E%3Ctext fill=%27%23fff%27 font-size=%2748%27 x=%2750%25%27 y=%2755%25%27 text-anchor=%27middle%27%3E?%3C/text%3E%3C/svg%3E";
+const DEFAULT_AVATAR_200 = "data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27200%27 height=%27200%27%3E%3Crect fill=%27%23667%27 width=%27200%27 height=%27200%27/%3E%3Ctext fill=%27%23fff%27 font-size=%2780%27 x=%2750%25%27 y=%2755%25%27 text-anchor=%27middle%27%3E?%3C/text%3E%3C/svg%3E";
+const DEFAULT_AVATAR_50 = "data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2750%27 height=%2750%27%3E%3Crect fill=%27%23667%27 width=%2750%27 height=%2750%27/%3E%3Ctext fill=%27%23fff%27 font-size=%2720%27 x=%2750%25%27 y=%2755%25%27 text-anchor=%27middle%27%3E?%3C/text%3E%3C/svg%3E";
+const DEFAULT_AVATAR_60 = "data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2760%27 height=%2760%27%3E%3Crect fill=%27%23667%27 width=%2760%27 height=%2760%27/%3E%3Ctext fill=%27%23fff%27 font-size=%2724%27 x=%2750%25%27 y=%2755%25%27 text-anchor=%27middle%27%3E?%3C/text%3E%3C/svg%3E";
+const DEFAULT_AVATAR_40 = "data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2740%27 height=%2740%27%3E%3Crect fill=%27%23667%27 width=%2740%27 height=%2740%27/%3E%3Ctext fill=%27%23fff%27 font-size=%2716%27 x=%2750%25%27 y=%2755%25%27 text-anchor=%27middle%27%3E?%3C/text%3E%3C/svg%3E";
+const DEFAULT_AVATAR_120 = "data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27120%27 height=%27120%27%3E%3Crect fill=%27%23667%27 width=%27120%27 height=%27120%27/%3E%3Ctext fill=%27%23fff%27 font-size=%2748%27 x=%2750%25%27 y=%2755%25%27 text-anchor=%27middle%27%3E?%3C/text%3E%3C/svg%3E";
+// Expose avatar constants to global scope for inline onerror handlers
+window.DEFAULT_AVATAR_200 = DEFAULT_AVATAR_200;
+window.DEFAULT_AVATAR_50 = DEFAULT_AVATAR_50;
+window.DEFAULT_AVATAR_60 = DEFAULT_AVATAR_60;
+window.DEFAULT_AVATAR_40 = DEFAULT_AVATAR_40;
+window.DEFAULT_AVATAR_120 = DEFAULT_AVATAR_120;
 
 // State
 let currentUser = null;
